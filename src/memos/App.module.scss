@@ -1,0 +1,674 @@
+// テーマA
+.themeA {
+  --accent: #3282B8;
+  --addbtn-shadow: rgba(27, 27, 27, 0.06);
+  --btn-active: #1B262C;
+  --btn-bg: #68afdf;
+  --btn-hover: #0F4C75;
+  --btn-shadow: #0F4C75;
+  --btn-text: #fff;
+  --delete-icon-color: #f0b471;
+  --delete-icon-hover: #b71c1c;
+  --done-icon-color: #97d89a;
+  --input-background-focus: #BBE1FA;
+  --input-bg: #efeefd;
+  --input-border-focus: #0F4C75;
+  --input-shadow-focus: #3282b822;
+  --input-text: #22304a;
+  --input-toggle-bg: #ccc;
+  --input-toggle-checked: #b3dbbe;
+  --input-toggle-hover: #b3b3b3;
+  --input-toggle-icon: #0F4C75;
+  --input-toggle-icon-hover: #0F4C75;
+  --input-toggle-knob: #fff;
+  --inputcolor: #5e96bb;
+  --inputshadow: rgba(50,130,184,0.04);
+  --main-bg: #e3f1fb;
+  --main-color: #22304a;
+  --memoinput-border: #3282B8;
+  --task-bg: #68afdf;
+  --task-done-color: #727272;
+  --task-done-bg: #b8d5ee;
+  --categroy-handle: #ddeefc;
+  --category-border: #2b5674ff;
+  --category-border-overlay: #2b5674ff;
+  --category-bg: #ddd9a4 ;
+  --collaspe-btn:#0F4C75;
+  --logout:#c3e0f3;
+  --inputToggleIcon-color:#0F4C75;
+  --arrow-color:#0F4C75;
+}
+
+// テーマB
+.themeB {
+  --accent: #FFC7C7;
+  --addbtn-shadow: rgba(50,130,184,0.06);
+  --btn-active: #393e46;
+  --btn-bg: #8785A2;
+  --btn-hover: #acabab;
+  --btn-shadow: #a7a096;
+  --btn-text: #fff;
+  --delete-icon-color: #fd8578;
+  --delete-icon-hover: #b71c1c;
+  --done-icon-color: #8fc791;
+  --input-background-focus: #FFE2E2;
+  --input-bg: #f8e4ea;
+  --input-border-focus: #ff9800;
+  --input-shadow-focus: #fd5acc22;
+  --input-text: #8785A2;
+  --input-toggle-bg: #ccc;
+  --input-toggle-checked: #b3dbb5;
+  --input-toggle-hover: #b3b3b3;
+  --input-toggle-icon: #ff9800;
+  --input-toggle-icon-hover: #ff9800;
+  --input-toggle-knob: #fff;
+  --inputcolor: #FFC7C7;
+  --inputshadow: rgba(50,130,184,0.04);
+  --main-bg: #F6F6F6;
+  --main-color: #8785A2;
+  --memoinput-border: #FFC7C7;
+  --task-bg: #FFE2E2;
+  --task-done-color: #bbbaba;
+  --task-done-bg: #fdefef;
+  --category-border: #b3a6a6;
+  --category-border-overlay: #b3a6a6;
+  --category-bg: #fcf0ca ;
+  --collaspe-btn:#8785A2;
+  --logout:#fadddd;
+   --inputToggleIcon-color:#8785A2;
+   --arrow-color:#8785A2;
+}
+
+// html, body
+html {
+  background: var(--main-bg);
+  color: var(--main-color);
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  body {
+    margin: 3rem;
+    background: var(--main-bg);
+    color: var(--main-color);
+  }
+}
+
+.container {
+  background-color: var(--main-bg);
+  color: var(--main-color);
+  display: flex;
+  flex-direction: column;
+  max-width: 100rem;
+  width: 100%;
+
+  .header {
+    margin-left:1rem;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1.5rem;
+  }
+
+  .headerControls {
+    /* 未使用になったため削除または空 */
+  }
+
+  .headerContainer {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    font-family: 'Ink Free', cursive, sans-serif;
+    font-weight: 600;
+    gap: 0.5rem;
+  }
+
+  .title {
+    font-weight: 800;
+    font-size: 2.5rem;
+    font-family: 'Ink Free', cursive, sans-serif;
+  }
+
+  .deleteBtn {
+    display: flex;
+    justify-content: flex-end;
+    .deleteIcon {
+      cursor: pointer;
+      transition: color 0.2s, transform 0.2s;
+      &:hover,
+      &:focus {
+        color: var(--delete-icon-hover);
+        transform: scale(1.15);
+        outline: none;
+      }
+    }
+  }
+
+  .addCategory {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
+
+  .category {
+    display: flex;
+    align-items: flex-start;
+    margin-left: 1rem;
+
+    .sortableCategory {
+      background-color: var(--main-bg);
+      margin-right: 0.6rem;
+      height: auto;
+      display: flex;
+      flex-direction: column;
+
+      .categoryHandle {
+        color: var(--categroy-handle);
+        background-color: var(--accent);
+        border-top-left-radius: 14px;
+        border-top-right-radius: 14px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.5em 1em;
+        margin-bottom: 1.5em;
+
+        .handleLabel {
+          flex: 1;
+          margin-right: 1.5em;
+        }
+
+        .collapseBtn {
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          align-items: center;
+          margin-right: 0.7em;
+          cursor: pointer;
+          font-size: 1.3rem;
+          color: var(--collaspe-btn);
+        }
+
+        .deleteIcon {
+          margin-left: 0;
+          cursor: pointer;
+          font-size: 1.3rem;
+          color: var(--delete-icon-color);
+          transition: color 0.2s, transform 0.2s;
+          &:hover,
+          &:focus {
+            color: var(--delete-icon-hover);
+            transform: scale(1.15);
+            outline: none;
+          }
+        }
+      }
+
+      .categoryContainer {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        width: 320px;
+        min-width: 0;
+        background-color: var(--main-bg);
+        max-width: 100rem;
+        border-radius: 15px;
+        min-height: 100px;
+        height: auto;
+        min-height: 0;
+        max-height: none;
+        box-sizing: border-box;
+        overflow: visible;
+
+        .deleteBtn {
+          display: flex;
+          justify-content: flex-end;
+          font-weight: 500;
+          color: var(--delete-icon-color);
+          margin-right:0.5rem;
+        }
+
+        .taskItem {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          background: var(--task-bg);
+          margin-bottom: 2px;
+          margin-left: 0.5rem;
+          padding: 6px;
+          border-radius: 4px;
+          width: 19rem;
+          min-height: 40px;
+          box-sizing: border-box;
+          transition: transform 200ms cubic-bezier(0.2, 0, 0, 1);
+          word-break: break-all;
+
+          .taskText {
+            flex: 1 1 0;
+            min-width: 0;
+            overflow-wrap: break-word;
+            word-break: break-all;
+            padding-right: 0.5em;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: normal;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+          }
+          .taskText::-webkit-scrollbar {
+            display: none;
+          }
+
+          .taskIcons {
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+            flex-shrink: 0;
+            margin-left: 0.7rem;
+          }
+
+          .done {
+            text-decoration: line-through;
+            color: var(--task-done-color);
+            transition: background 1s, color 1s;
+            opacity: 0.5;
+          }
+
+          .grab {
+            cursor: grab;
+          }
+
+          .doneIcon {
+            display: inline-block;
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: var(--done-icon-color);
+            cursor: pointer;
+            user-select: none;
+            margin-right: 0.3rem;
+            transition: color 0.2s, transform 0.2s;
+            &:hover,
+            &:focus {
+              color: var(--done-icon-hover);
+              transform: scale(1.15);
+              outline: none;
+            }
+          }
+
+          .deleteIcon {
+            display: inline-block;
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: var(--delete-icon-color);
+            cursor: pointer;
+            user-select: none;
+            transition: color 0.2s, transform 0.2s;
+            &:hover,
+            &:focus {
+              color: var(--delete-icon-hover);
+              transform: scale(1.15);
+              outline: none;
+            }
+          }
+
+          span > .doneIcon,
+          span > .deleteIcon {
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+          }
+
+          &:hover span > .doneIcon,
+          &:hover span > .deleteIcon,
+          &:focus-within span > .doneIcon,
+          &:focus-within span > .deleteIcon {
+            opacity: 1;
+            pointer-events: auto;
+          }
+
+          .taskText {
+            flex: 1 1 0;
+            min-width: 0;
+            overflow: auto;
+            word-break: break-all;
+          }
+        }
+      }
+    }
+  }
+
+  .inputBtnContainer {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    .inputBtn {
+      display: flex;
+      justify-content: center;
+    }
+  }
+
+  .categoryInput {
+    width: 100%;
+    width: 11rem;
+    height: 1.5rem;
+    margin-left: 0.7rem;
+    font-size: 1rem;
+    font-family: inherit;
+    background: var(--input-bg);
+    border: 1.5px solid var(--inputcolor);
+    border-radius: 7px;
+    box-shadow: 0 1px 4px var(--inputshadow);
+    outline: none;
+    box-shadow: 0 1px 4px var(--inputshadow);
+    transition: border 0.2s, box-shadow 0.2s;
+    &:focus {
+      border: 1.5px solid var(--input-border-focus);
+      box-shadow: 0 0 0 2px var(--input-shadow-focus);
+      background: var(--input-background-focus);
+    }
+  }
+
+  .toggleContainer {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    min-height: 2rem;
+  }
+
+  .toggleSwitch {
+    position: relative;
+    display: inline-block;
+    width: 40px;
+    height: 22px;
+    input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: var(--input-toggle-bg);
+      border-radius: 22px;
+      transition: .4s;
+      &:before {
+        position: absolute;
+        content: "";
+        height: 18px;
+        width: 18px;
+        left: 2px;
+        bottom: 2px;
+        background-color: var(--input-toggle-knob);
+        border-radius: 50%;
+        transition: .4s;
+      }
+    }
+    input:checked + .slider {
+      background-color: var(--input-toggle-checked);
+    }
+    input:checked + .slider:before {
+      transform: translateX(18px);
+    }
+  }
+
+  .categoryInputStyle {
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-start;
+    min-height: 32px;
+  }
+
+  .inputToggleIcon {
+    display: inline-block;
+    font-size: 1.6rem;
+    font-weight: bold;
+    color: var(--inputToggleIcon-color);
+    cursor: pointer;
+    user-select: none;
+    margin-left: 0.5rem;
+    transition: color 0.2s, transform 0.2s;
+    &:hover,
+    &:focus {
+      color: #0F4C75;
+      transform: scale(1.15);
+      outline: none;
+    }
+  }
+  .memoInputStyle{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .memoInput {
+    width: 100%;
+    width: 12rem;
+    height: 2.2rem;
+    padding: 0 1rem;
+    margin-left: 0.7rem;
+    margin-bottom: 0.7rem;
+    font-size: 1rem;
+    font-family: inherit;
+    background: var(--input-bg);
+    border: 1.5px solid var(--memoinput-border);
+    border-radius: 7px;
+    box-shadow: 0 1px 4px rgba(50,130,184,0.04);
+    outline: none;
+    box-shadow: 0 1px 4px var(--inputshadow);
+    transition: border 0.2s, box-shadow 0.2s;
+    text-align: left;
+    line-height: 2.2rem;
+    &:focus {
+      border: 1.5px solid var(--input-border-focus);
+      box-shadow: 0 0 0 2px var(--input-shadow-focus);
+      background: var(--input-background-focus);
+    }
+  }
+  .categoryAddBtn {
+    height: 1.7rem;
+    background: var(--btn-bg);
+    color: var(--btn-text);
+    border: none;
+    border-radius: 6px;
+    padding: 0.3em 0.3rem;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s, box-shadow 0.2s;
+    box-shadow: 0 1px 4px var(--btn-shadow);
+    margin-left: 0.5rem;
+    &:hover,
+    &:focus {
+      background: var(--btn-hover);
+      outline: none;
+    }
+    &:active {
+      background: var(--btn-active);
+    }
+  }
+
+  .addBtn {
+    padding-bottom: 1rem;
+    height: 2.2rem;
+    background: var(--btn-bg);
+    color: var(--btn-text);
+    border: none;
+    border-radius: 6px;
+    padding: 0.5em 1em;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s, box-shadow 0.2s;
+    box-shadow: 0 1px 4px var(--addbtn-shadow);
+    margin-left: 0.5rem;
+    margin-bottom: 0.7rem;
+    &:hover,
+    &:focus {
+      background: var(--btn-hover);
+      outline: none;
+    }
+    &:active {
+      background: var(--btn-active);
+    }
+  }
+
+  .taskItem.done {
+    background: var(--task-done-bg) !important;
+    opacity: 0.5;
+  }
+
+  .sidebar {
+    width: 260px;
+    background: var(--main-bg);
+    margin-right: 2rem;
+  }
+  .sidebarCategory {
+    cursor: pointer;
+    padding: 0.5rem 1rem;
+    border-radius: 10px;
+    color: var(--main-color);
+    &:hover {
+      background: var(--accent);
+      color: #fff;
+    }
+  }
+}
+
+.body {
+  display: flex;
+}
+
+.isParentOverlay{
+  background: #fffbe6;
+  opacity: 0.8;
+  margin-bottom: 2px !important;
+  padding: 0 !important;
+}
+
+.categoryContainerOverlay {
+  margin-bottom: 1px !important;
+  margin-top: 2px !important;
+  padding: 0 !important;
+  transform: scaleX(0.93) scaleY(0.90);
+  border-radius: 1px !important;
+  background: var(--category-bg) !important;
+  .taskItem {
+    margin-bottom: 2px !important;
+    padding: 0 !important;
+  }
+}
+
+@media (max-width: 600px) {
+  .container {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0 0vw;
+
+    .header {
+      position: relative;
+      width: 100%;
+      margin-left: 0;
+      padding: 0px 0 0;
+      margin-left:50px;
+    }
+  }
+
+  .logoutBtn {
+    position: absolute;
+    top: 60;
+    right: 110;
+    margin: 0;
+    z-index: 10;
+  }
+  .sidebar {
+    width: min(90vw, 320px);
+    margin: 0 auto 1.5rem;
+  }
+
+}
+
+.categorySwitchArrows {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 1rem 0;
+  width: 100%;
+}
+
+.categoryArrowBtn {
+  font-size: 2rem;
+  border: none;
+  border-radius: 50%;
+  width: 2.5rem;
+  height: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  margin-top:50px;
+}
+
+.categoryNameMobile {
+  font-size: 1.2rem;
+  font-weight: bold;
+  margin: 0 1rem;
+}
+
+.mainContainer {
+  display: flex;
+  align-items: flex-start;
+}
+
+.categoryContainer {
+  height: auto;
+  min-height: 0;
+  max-height: none;
+  box-sizing: border-box;
+  overflow: visible;
+  display: flex;
+  flex-direction: column;
+}
+
+.dragging{
+  
+}
+
+/* Sync button and status */
+.syncBtn {
+  padding: 0.35rem 0.6rem;
+  border-radius: 6px;
+  border: 1px solid rgba(0,0,0,0.08);
+  background: white;
+  cursor: pointer;
+}
+
+.syncStatus {
+  font-size: 0.85rem;
+  color: #333;
+}
+
+.logoutBtn {
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid #cfd3d8;
+  border-radius: 8px;
+  background: var(--logout);
+  color: #1f1f1f;
+  cursor: pointer;
+  transition: background-color .2s, box-shadow .2s;
+  font-family: 'Ink Free', cursive, sans-serif; /* SortNoteと同じフォント */
+  font-weight: 900;
+  letter-spacing: 0.04em;  /* 任意: 少し広げて強調 */
+}
+.logoutBtn:hover {
+  background: #f7f9fc;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+}

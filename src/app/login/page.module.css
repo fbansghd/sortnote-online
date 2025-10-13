@@ -1,0 +1,84 @@
+/* Pastel theme for login page (scoped to this page only) */
+/* 代わりに .wrapper にスコープする */
+.wrapper {
+  /* page-scoped variables */
+  --pastel-mint: #a7e9af;
+  --pastel-lavender: #cbb9f0;
+  --box-background: #ffffff;
+  --box-shadow: rgba(167, 233, 175, 0.4);
+
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-block: 48px;
+  padding: 32px;
+  background-color: #f7f9fc;
+}
+
+.loginContainer {
+  width: 100%;
+  max-width: 400px;    /* 360px → 520px に拡大 */
+  padding: 48px 40px;             /* 余白を増やす */
+  border-radius: 14px; /* 任意: 少しだけ大きく */
+  background-color: var(--box-background);
+  text-align: center;
+  box-shadow: 0 12px 36px var(--box-shadow); /* 影を少し強めに */
+
+  /* 追加: 縦サイズ拡張と中央寄せ */
+  min-height: clamp(460px, 60vh, 500px); /* 必要なら 520px など固定でも可 */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.serviceIcon {
+  font-size: 40px;
+  color: var(--pastel-lavender);
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.title {
+  font-size: 18px;
+  font-weight: 600;
+  margin-top: 22px;
+  margin-bottom: 18px;
+  color: #1e4753;
+}
+
+.googleButtonWrap {
+  display: flex;
+  justify-content: center;
+}
+
+/* Footer links */
+.footerLinks {
+  margin-top: 24px;
+  display: flex;
+  justify-content: center; /* 中央寄せ */
+  align-items: center;     /* 縦方向の中央寄せ（必要なら） */
+  gap: 20px;
+  font-size: 13px;
+  color: #888;
+}
+.footerLinks a {
+  color: #888;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+.footerLinks a:hover {
+  color: var(--pastel-lavender);
+  text-decoration: underline;
+}
+
+/* Gentle shadow for the Google button on this page only */
+.googleShadow :global(.gsi-material-button) {
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+.googleShadow :global(.gsi-material-button:hover) {
+  box-shadow: 0 6px 10px rgba(0, 0, 0, 0.15);
+}
