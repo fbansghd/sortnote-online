@@ -78,13 +78,7 @@ export function useMemos() {
     setMobileCategoryIndex(openIndexes[nextIdx]);
   };
 
-  // 初回のみ：localStorageからmemosを復元
-  useEffect(() => {
-    const saved = localStorage.getItem("memos");
-    if (saved) {
-      setMemos(JSON.parse(saved));
-    }
-  }, []);
+  // 重複初期化を削除（useState内で既に初期化済み）
 
   // memosが変わるたびにlocalStorageへ保存
   useEffect(() => {
@@ -94,7 +88,14 @@ export function useMemos() {
   // カテゴリー追加
   const addCategory = () => {
     if (!text) return;
-    setMemos([...memos, { id: uuidv4(), category: text, tasks: [] }]);
+    // 重複チェック
+    const trimmedText = text.trim();
+    const isDuplicate = memos.some(memo => memo.category === trimmedText);
+    if (isDuplicate) {
+      alert('同じ名前のカテゴリーが既に存在します');
+      return;
+    }
+    setMemos([...memos, { id: uuidv4(), category: trimmedText, tasks: [] }]);
     setText("");
     setTaskInputs([...taskInputs, ""]);
   };
@@ -331,6 +332,18 @@ export function useMemos() {
     setMobileCategoryIndex,
     handlePrevCategory,
     handleNextCategory,
+    // Clean up duplicates
+    cleanupDuplicates() {
+      const uniqueMemos = memos.filter((memo, index, self) => 
+        index === self.findIndex(m => m.category === memo.category)
+      );
+      if (uniqueMemos.length !== memos.length) {
+        setMemos(uniqueMemos);
+        localStorage.setItem('memos', JSON.stringify(uniqueMemos));
+        return { removed: memos.length - uniqueMemos.length };
+      }
+      return { removed: 0 };
+    },
     // Server sync helpers (POST/GET to /api/notes)
     async saveMemosToServer() {
       try {
