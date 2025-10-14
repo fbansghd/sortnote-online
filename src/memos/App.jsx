@@ -197,24 +197,25 @@ function App() {
               >
                 {/* 折り畳み中以外のカテゴリーを表示 */}
                 {memos
-                  .map((categoryItem, originalIndex) => {
-                    // モバイル時の表示判定
-                    const shouldShow = !isMobile
-                      || (!showSidebar && originalIndex === mobileCategoryIndex)
-                      || (!showSidebar && !isMobile);
-                    
-                    if (!shouldShow || collapsedCategories.includes(categoryItem.id)) {
-                      return null;
-                    }
-
-                    return (
+                  .filter(categoryItem => !collapsedCategories.includes(categoryItem.id))
+                  .map((categoryItem, originalIndex) => (
+                    <div 
+                      key={categoryItem.id}
+                      className={`
+                        ${styles.categoryWrapper} 
+                        ${isMobile && !showSidebar && originalIndex !== mobileCategoryIndex 
+                          ? styles.hiddenOnMobile 
+                          : ''
+                        }
+                      `}
+                    >
                       <SortableCategory
                         key={categoryItem.id}
                         id={categoryItem.id}
                         label={categoryItem.category}
                         onDelete={() => {
                           if (window.confirm("本当にこのカテゴリを削除しますか？")) {
-                            deleteMemo(originalIndex); // 正しいインデックス使用
+                            deleteMemo(originalIndex);
                           }
                         }}
                         onCollapse={() => toggleCategoryCollapse(categoryItem.id)}
@@ -291,9 +292,8 @@ function App() {
                           </div>
                         </div>
                       </SortableCategory>
-                    );
-                  })
-                  .filter(Boolean) // null要素を除去
+                    </div>
+                  ))
                 }
               </SortableContext>
               {/* ドラッグ中のオーバーレイ表示（ドラッグ状態に依存） */}
