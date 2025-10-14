@@ -225,6 +225,36 @@ export function useMemos() {
     });
   };
 
+  // Task delete by IDs (safer than index-based)
+  const deleteTaskById = (categoryId, taskId) => {
+    setMemos((prev) => {
+      try {
+        const idx = prev.findIndex((cat) => cat.id === categoryId);
+        if (idx === -1) {
+          console.error(`Category not found for deleteTaskById: ${categoryId}`);
+          return prev;
+        }
+        const next = [...prev];
+        const cat = next[idx];
+        if (!cat || !Array.isArray(cat.tasks)) {
+          console.error(`Invalid category/tasks for deleteTaskById at index ${idx}`);
+          return prev;
+        }
+        const beforeLen = cat.tasks.length;
+        const newTasks = cat.tasks.filter((t) => t.id !== taskId);
+        if (newTasks.length === beforeLen) {
+          console.warn(`Task not found for deleteTaskById: ${taskId}`);
+          return prev;
+        }
+        next[idx] = { ...cat, tasks: newTasks };
+        return next;
+      } catch (e) {
+        console.error('deleteTaskById failed:', e);
+        return prev;
+      }
+    });
+  };
+
   // カテゴリー削除
   const deleteMemo = (catIdx) => {
     setMemos((memos) => memos.filter((_, i) => i !== catIdx));
@@ -383,6 +413,7 @@ export function useMemos() {
     addTaskToCategory,
     toogleTaskDone,
     deleteTask,
+  deleteTaskById,
     deleteMemo,
     showTaskInput,
     setShowTaskInput,
