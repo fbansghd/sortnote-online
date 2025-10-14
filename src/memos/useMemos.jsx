@@ -106,47 +106,122 @@ export function useMemos() {
   };
 
   // タスク追加
+  // タスク追加の安全性強化
   const addTaskToCategory = (catIdx, task) => {
     const trimmed = (task || '').toString().trim();
     if (!trimmed) return;
 
+    console.log(`Adding task "${trimmed}" to category index ${catIdx}`); // デバッグログ
+
     setMemos((prev) => {
-      const newMemos = [...prev];
-      const currentTasks = newMemos[catIdx]?.tasks || [];
-      // Prevent immediate duplicate adds: if last task text equals this one, skip
-      if (currentTasks.length > 0 && currentTasks[currentTasks.length - 1].text === trimmed) {
+      try {
+        // インデックス範囲チェック
+        if (catIdx < 0 || catIdx >= prev.length) {
+          console.error(`Invalid category index: ${catIdx}, array length: ${prev.length}`);
+          return prev;
+        }
+
+        const newMemos = [...prev];
+        const category = newMemos[catIdx];
+        
+        if (!category) {
+          console.error(`Category at index ${catIdx} is undefined`);
+          return prev;
+        }
+
+        const currentTasks = category.tasks || [];
+        
+        // 重複チェック
+        const isDuplicate = currentTasks.some(existingTask => 
+          existingTask.text === trimmed
+        );
+        if (isDuplicate) {
+          console.log('Duplicate task prevented:', trimmed);
+          return prev;
+        }
+
+        const newTask = { 
+          id: uuidv4(), 
+          text: trimmed, 
+          done: false,
+          createdAt: new Date().toISOString()
+        };
+        
+        const tasks = [...currentTasks, newTask];
+        newMemos[catIdx] = { 
+          ...category, 
+          tasks: sortTasks(tasks),
+          updatedAt: new Date().toISOString()
+        };
+        
+        console.log(`Task added successfully to "${category.category}"`); // デバッグログ
+        return newMemos;
+      } catch (error) {
+        console.error('Error adding task:', error);
         return prev;
       }
-      const tasks = [...currentTasks, { id: uuidv4(), text: trimmed, done: false }];
-      newMemos[catIdx] = { ...newMemos[catIdx], tasks: sortTasks(tasks) };
-      return newMemos;
     });
 
-    // Clear the input for the category index
+    // 入力欄クリア
     const newInputs = [...taskInputs];
     newInputs[catIdx] = "";
     setTaskInputs(newInputs);
   };
 
   // タスク完了状態の切り替え
+  // タスク操作の安全性強化
   const toogleTaskDone = (catIdx, taskId) => {
     setMemos((prev) => {
-      const newMemos = [...prev];
-      const tasks = newMemos[catIdx].tasks.map((task) =>
-        task.id === taskId ? { ...task, done: !task.done } : task
-      );
-      newMemos[catIdx].tasks = sortTasks(tasks);
-      return newMemos;
+      try {
+        if (catIdx < 0 || catIdx >= prev.length) {
+          console.error(`Invalid category index: ${catIdx}`);
+          return prev;
+        }
+
+        const newMemos = [...prev];
+        const category = newMemos[catIdx];
+        
+        if (!category || !category.tasks) {
+          console.error(`Invalid category or tasks at index ${catIdx}`);
+          return prev;
+        }
+
+        const tasks = category.tasks.map(task =>
+          task.id === taskId ? { ...task, done: !task.done } : task
+        );
+        
+        newMemos[catIdx] = { ...category, tasks: sortTasks(tasks) };
+        return newMemos;
+      } catch (error) {
+        console.error('Error toggling task:', error);
+        return prev;
+      }
     });
   };
 
-  // タスク削除
   const deleteTask = (catIdx, taskId) => {
     setMemos((prev) => {
-      const newMemos = [...prev];
-      const tasks = newMemos[catIdx].tasks.filter((task) => task.id !== taskId);
-      newMemos[catIdx].tasks = sortTasks(tasks);
-      return newMemos;
+      try {
+        if (catIdx < 0 || catIdx >= prev.length) {
+          console.error(`Invalid category index: ${catIdx}`);
+          return prev;
+        }
+
+        const newMemos = [...prev];
+        const category = newMemos[catIdx];
+        
+        if (!category || !category.tasks) {
+          console.error(`Invalid category or tasks at index ${catIdx}`);
+          return prev;
+        }
+
+        const tasks = category.tasks.filter(task => task.id !== taskId);
+        newMemos[catIdx] = { ...category, tasks };
+        return newMemos;
+      } catch (error) {
+        console.error('Error deleting task:', error);
+        return prev;
+      }
     });
   };
 
