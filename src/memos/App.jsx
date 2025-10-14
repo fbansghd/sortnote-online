@@ -197,103 +197,109 @@ function App() {
               >
                 {/* 折り畳み中以外のカテゴリーを表示 */}
                 {memos
-                  .filter(categoryItem => !collapsedCategories.includes(categoryItem.id))
-                  .map((categoryItem, originalIndex) => (
-                    <div 
-                      key={categoryItem.id}
-                      className={`
-                        ${styles.categoryWrapper} 
-                        ${isMobile && !showSidebar && originalIndex !== mobileCategoryIndex 
-                          ? styles.hiddenOnMobile 
-                          : ''
-                        }
-                      `}
-                    >
-                      <SortableCategory
+                  .map((categoryItem, realIndex) => {
+                    // 折り畳み中のカテゴリーは早期リターン
+                    if (collapsedCategories.includes(categoryItem.id)) {
+                      return null;
+                    }
+
+                    return (
+                      <div 
                         key={categoryItem.id}
-                        id={categoryItem.id}
-                        label={categoryItem.category}
-                        onDelete={() => {
-                          if (window.confirm("本当にこのカテゴリを削除しますか？")) {
-                            deleteMemo(originalIndex);
+                        className={`
+                          ${styles.categoryWrapper} 
+                          ${isMobile && !showSidebar && realIndex !== mobileCategoryIndex 
+                            ? styles.hiddenOnMobile 
+                            : ''
                           }
-                        }}
-                        onCollapse={() => toggleCategoryCollapse(categoryItem.id)}
+                        `}
                       >
-                        <div className={styles.categoryContainer}>
-                          <div>
-                            {/* タスクの並び替えコンテキスト */}
-                            <SortableContext
-                              items={categoryItem.tasks?.map(task => task.id) || []}
-                              strategy={verticalListSortingStrategy}
-                            >
-                              {/* タスク一覧表示 */}
-                              {(categoryItem.tasks || [])
-                                .slice()
-                                .sort((a, b) => a.done - b.done)
-                                .map((taskItem) => (
-                                  <SortableTask
-                                    key={taskItem.id}
-                                    id={taskItem.id}
-                                    text={taskItem.text}
-                                    done={taskItem.done}
-                                    onToggle={() => toogleTaskDone(originalIndex, taskItem.id)} // 正しいインデックス
-                                    onDelete={() => deleteTask(originalIndex, taskItem.id)} // 正しいインデックス
-                                  />
-                                ))}
-                            </SortableContext>
-                            
-                            {/* タスク追加UI */}
-                            <div className={styles.inputBtnContainer}>
-                              <div className={styles.inputBtn}>
-                                <span
-                                  className={styles.inputToggleIcon}
-                                  onClick={() => toggleTaskInput(originalIndex)} // 正しいインデックス
-                                  tabIndex={0}
-                                  role="button"
-                                  aria-label="タスク入力欄の表示切替"
-                                  style={{ marginTop: "0.5rem" }}
-                                >
-                                  {showTaskInput[originalIndex] ? "−" : "+"} {/* 正しいインデックス */}
-                                </span>
-                              </div>
-                              <div>
-                                {showTaskInput[originalIndex] && ( // 正しいインデックス
-                                  <div className={styles.memoInputStyle}>
-                                    <input
-                                      className={styles.memoInput}
-                                      placeholder="input task"
-                                      value={taskInputs[originalIndex] || ""} // 正しいインデックス
-                                      onChange={e => {
-                                        const newInputs = [...taskInputs];
-                                        newInputs[originalIndex] = e.target.value; // 正しいインデックス
-                                        setTaskInputs(newInputs);
-                                      }}
-                                      onKeyDown={e => {
-                                        if (e.key === "Enter") {
-                                          e.preventDefault();
-                                          e.stopPropagation();
-                                          addTaskToCategory(originalIndex, taskInputs[originalIndex]); // 正しいインデックス
-                                        }
-                                      }}
+                        <SortableCategory
+                          id={categoryItem.id}
+                          label={categoryItem.category}
+                          onDelete={() => {
+                            if (window.confirm("本当にこのカテゴリを削除しますか？")) {
+                              deleteMemo(realIndex); // 正しいインデックス
+                            }
+                          }}
+                          onCollapse={() => toggleCategoryCollapse(categoryItem.id)}
+                        >
+                          <div className={styles.categoryContainer}>
+                            <div>
+                              {/* タスクの並び替えコンテキスト */}
+                              <SortableContext
+                                items={categoryItem.tasks?.map(task => task.id) || []}
+                                strategy={verticalListSortingStrategy}
+                              >
+                                {/* タスク一覧表示 */}
+                                {(categoryItem.tasks || [])
+                                  .slice()
+                                  .sort((a, b) => a.done - b.done)
+                                  .map((taskItem) => (
+                                    <SortableTask
+                                      key={taskItem.id}
+                                      id={taskItem.id}
+                                      text={taskItem.text}
+                                      done={taskItem.done}
+                                      onToggle={() => toogleTaskDone(realIndex, taskItem.id)} // 正しいインデックス
+                                      onDelete={() => deleteTask(realIndex, taskItem.id)} // 正しいインデックス
                                     />
-                                    <button
-                                      className={styles.addBtn}
-                                      onClick={() => {
-                                        addTaskToCategory(originalIndex, taskInputs[originalIndex]); // 正しいインデックス
-                                      }}
-                                    >
-                                      add
-                                    </button>
-                                  </div>
-                                )}
+                                  ))}
+                              </SortableContext>
+                              
+                              {/* タスク追加UI */}
+                              <div className={styles.inputBtnContainer}>
+                                <div className={styles.inputBtn}>
+                                  <span
+                                    className={styles.inputToggleIcon}
+                                    onClick={() => toggleTaskInput(realIndex)} // 正しいインデックス
+                                    tabIndex={0}
+                                    role="button"
+                                    aria-label="タスク入力欄の表示切替"
+                                    style={{ marginTop: "0.5rem" }}
+                                  >
+                                    {showTaskInput[realIndex] ? "−" : "+"} {/* 正しいインデックス */}
+                                  </span>
+                                </div>
+                                <div>
+                                  {showTaskInput[realIndex] && ( // 正しいインデックス
+                                    <div className={styles.memoInputStyle}>
+                                      <input
+                                        className={styles.memoInput}
+                                        placeholder="input task"
+                                        value={taskInputs[realIndex] || ""} // 正しいインデックス
+                                        onChange={e => {
+                                          const newInputs = [...taskInputs];
+                                          newInputs[realIndex] = e.target.value; // 正しいインデックス
+                                          setTaskInputs(newInputs);
+                                        }}
+                                        onKeyDown={e => {
+                                          if (e.key === "Enter") {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            addTaskToCategory(realIndex, taskInputs[realIndex]); // 正しいインデックス
+                                          }
+                                        }}
+                                      />
+                                      <button
+                                        className={styles.addBtn}
+                                        onClick={() => {
+                                          addTaskToCategory(realIndex, taskInputs[realIndex]); // 正しいインデックス
+                                        }}
+                                      >
+                                        add
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                             </div>
                           </div>
-                        </div>
-                      </SortableCategory>
-                    </div>
-                  ))
+                        </SortableCategory>
+                      </div>
+                    );
+                  })
+                  .filter(Boolean) // null要素を除去
                 }
               </SortableContext>
               {/* ドラッグ中のオーバーレイ表示（ドラッグ状態に依存） */}

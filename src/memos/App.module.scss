@@ -673,6 +673,13 @@ html {
   box-shadow: 0 1px 4px rgba(0,0,0,0.08);
 }
 
+/* カテゴリーラッパー（表示制御用） */
+.categoryWrapper {
+  width: 100%;
+  margin-bottom: 1rem;
+}
+
+/* モバイル時の非表示クラス */
 .hiddenOnMobile {
   @media (max-width: 600px) {
     display: none !important;
