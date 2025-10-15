@@ -12,11 +12,8 @@ export function useMemos() {
   const [text, setText] = useState("");
   // 各カテゴリーごとのタスク入力欄の値
   const [taskInputs, setTaskInputs] = useState([]);
-  // 全カテゴリーとタスクのデータ
-  const [memos, setMemos] = useState(() => {
-    const saved = localStorage.getItem("memos");
-    return saved ? JSON.parse(saved) : [];
-  });
+  // 全カテゴリーとタスクのデータ（localStorageを使わず空で開始）
+  const [memos, setMemos] = useState([]);
 
   // ドラッグ中のタスク情報
   const [activeTask, setActiveTask] = useState(null);
@@ -82,13 +79,6 @@ export function useMemos() {
     const nextIdx = (currentIdx + 1) % openIndexes.length;
     setMobileCategoryIndex(openIndexes[nextIdx]);
   };
-
-  // 重複初期化を削除（useState内で既に初期化済み）
-
-  // memosが変わるたびにlocalStorageへ保存
-  useEffect(() => {
-    localStorage.setItem("memos", JSON.stringify(memos));
-  }, [memos]);
 
   // カテゴリー追加
   const addCategory = () => {
@@ -305,7 +295,6 @@ export function useMemos() {
     if (activeCategoryIndex !== -1 && overCategoryIndex !== -1) {
       const newMemos = arrayMove(memos, activeCategoryIndex, overCategoryIndex);
       setMemos(newMemos);
-      localStorage.setItem("memos", JSON.stringify(newMemos));
       setActiveTask(null);
       setTimeout(() => setActiveCategory(null), 0); // ← 非同期リセット
       return;
@@ -347,7 +336,6 @@ export function useMemos() {
         tasks: arrayMove(memos[fromCategoryIndex].tasks, oldIndex, newIndex),
       };
       setMemos(newMemos);
-      localStorage.setItem("memos", JSON.stringify(newMemos));
       setActiveTask(null);
       setTimeout(() => setActiveCategory(null), 0); // ← 非同期リセット
       return;
@@ -458,12 +446,24 @@ export function useMemos() {
     // Server sync helpers (POST/GET to /api/notes)
     async saveMemosToServer() {
       try {
+        const cleaned = (Array.isArray(memos) ? memos : []).map((c, i) => ({
+          // 重複排除しない。IDは送らない。
+          category: c.category,
+          sort_index: i,
+          tasks: (Array.isArray(c.tasks) ? c.tasks : []).map(t => ({
+            text: t.text ?? '',
+            done: !!t.done,
+          })),
+        }));
+
+        if (cleaned.length === 0) return { ok: true, skipped: true };
+
         const res = await fetch('/api/notes', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ memos }),
+          body: JSON.stringify({ memos: cleaned }),
         });
-        const data = await res.json();
+        const data = await res.json().catch(() => null);
         if (!res.ok) throw new Error(data?.error || 'Save failed');
         return { ok: true };
       } catch (err) {
@@ -476,12 +476,18 @@ export function useMemos() {
         const res = await fetch('/api/notes');
         const data = await res.json();
         if (!res.ok) throw new Error(data?.error || 'Load failed');
+
         const serverMemos = data?.memos;
-        if (!serverMemos) return { ok: true, memos: null };
         if (Array.isArray(serverMemos)) {
           setMemos(serverMemos);
           localStorage.setItem('memos', JSON.stringify(serverMemos));
         }
+
+        if (Array.isArray(data?.collapsedTitles)) {
+          setCollapsedCategories(data.collapsedTitles); // サーバー状態を採用
+          localStorage.setItem('collapsedCategories', JSON.stringify(data.collapsedTitles));
+        }
+
         return { ok: true, memos: serverMemos };
       } catch (err) {
         console.error('Load failed:', err);
@@ -503,63 +509,68 @@ export function useMemosSync(memos, setMemos) {
     try { return JSON.stringify(v); } catch { return String(Math.random()); }
   }, []);
 
-  // 初回ロード：サーバーのスナップショットをそのまま採用（ローカルよりサーバー優先）
+  // 初回ロード：サーバー優先（localStorage不使用）
   React.useEffect(() => {
     if (status !== 'authenticated' || didInitialLoad.current) return;
     didInitialLoad.current = true;
-
     (async () => {
       try {
         const res = await fetch('/api/notes', { cache: 'no-store' });
         if (!res.ok) return;
-
         const data = await res.json();
         const serverMemos = Array.isArray(data?.memos) ? data.memos : null;
-
-        // ローカルの現状を退避（復旧用）
-        try {
-          const localNow = localStorage.getItem('memos');
-          if (localNow) localStorage.setItem('memos_backup_before_load', localNow);
-        } catch {}
-
         if (serverMemos) {
-          // 以前の「サーバーが空ならローカルを保持」ガードを撤去
           setMemos(serverMemos);
-          try { localStorage.setItem('memos', JSON.stringify(serverMemos)); } catch {}
-          lastServerHash.current = hash(serverMemos);
+          // 送信用ハッシュはクリーンペイロードで管理
+          const cleaned = serverMemos.map((c, i) => ({
+            category: c.category,
+            sort_index: i,
+            tasks: (Array.isArray(c.tasks) ? c.tasks : []).map(t => ({
+              text: t.text ?? '',
+              done: !!t.done,
+            })),
+          }));
+          lastServerHash.current = JSON.stringify({ memos: cleaned });
         }
       } catch (e) {
         console.error('[sync] initial load failed:', e);
       }
     })();
-  }, [status, setMemos, hash]);
+  }, [status, setMemos]);
 
-  // 自動保存：同一内容は保存しない。空配列の保存は既存がある限りブロック。
+  // 自動保存：空は送らない（上書き防止）
   React.useEffect(() => {
     if (status !== 'authenticated') return;
     if (!Array.isArray(memos)) return;
 
-    const currentHash = hash(memos);
-    if (currentHash === lastServerHash.current) return;
+    const cleaned = memos.map((c, i) => ({
+      category: c.category,
+      sort_index: i,
+      tasks: (Array.isArray(c.tasks) ? c.tasks : []).map(t => ({
+        text: t.text ?? '',
+        done: !!t.done,
+      })),
+    }));
 
-    // 一度サーバー状態を見た後は「空での上書き」を防ぐ
-    if (memos.length === 0 && lastServerHash.current !== null) {
-      console.warn('[sync] skip posting empty memos to avoid wiping server data');
-      return;
-    }
+    // 空は送らない
+    if (cleaned.length === 0) return;
+
+    const outgoing = { memos: cleaned };
+    const outgoingHash = JSON.stringify(outgoing);
+    if (outgoingHash === lastServerHash.current) return;
 
     const t = setTimeout(async () => {
       try {
         const res = await fetch('/api/notes', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ memos }),
+          body: JSON.stringify(outgoing),
         });
+        const data = await res.json().catch(() => null);
         if (res.ok) {
-          lastServerHash.current = currentHash;
+          lastServerHash.current = outgoingHash;
         } else {
-          const msg = await res.text().catch(() => '');
-          console.error('[sync] save failed:', res.status, msg);
+          console.error('[sync] save failed:', res.status, data);
         }
       } catch (e) {
         console.error('[sync] save error:', e);
@@ -567,5 +578,32 @@ export function useMemosSync(memos, setMemos) {
     }, 1200);
 
     return () => clearTimeout(t);
-  }, [status, memos, hash]);
-} // ← useMemosSync を閉じる
+  }, [status, memos]);
+}
+
+// サーバー保存はIDを送らない（ユーティリティ）
+async function saveMemosToServerClean(memos, extra = {}) {
+  const cleaned = (Array.isArray(memos) ? memos : []).map((c, i) => ({
+    category: c.category,
+    sort_index: i,
+    tasks: (Array.isArray(c.tasks) ? c.tasks : []).map(t => ({
+      text: t.text ?? '',
+      done: !!t.done,
+    })),
+  }));
+
+  if (cleaned.length === 0) {
+    return { ok: true, skipped: true };
+  }
+
+  const res = await fetch('/api/notes', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ memos: cleaned, ...extra }),
+  });
+  const data = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new Error((data && data.error) || 'Save failed');
+  }
+  return { ok: true };
+}

@@ -14,7 +14,6 @@ const arrowSize = 35;
 const arrowStrokeWidth = 2;
 
 function App() {
-  // カスタムフックから全ての状態・操作関数を取得
   const {
     text,
     setText,
@@ -22,6 +21,9 @@ function App() {
     setTaskInputs,
     memos,
     setMemos,
+    // 追加: 手動保存/読込
+    saveMemosToServer,
+    loadMemosFromServer,
     addCategory,
     addTaskToCategory,
   toogleTaskDone,
@@ -50,6 +52,15 @@ function App() {
   // enable auto-load / auto-save behavior (uses session internally)
   useMemosSync(memos, setMemos);
   const { status } = useSession();
+
+  // サインイン直後に一度だけ即時保存（自動保存のデバウンス待ちを回避）
+  React.useEffect(() => {
+    if (status === 'authenticated') {
+      saveMemosToServer().then(() => {
+        console.log('[save] pushed current memos to server');
+      });
+    }
+  }, [status, saveMemosToServer]);
 
   // DnD Kitのセンサー設定（マウス・タッチ対応）
   const sensors = useSensors(
