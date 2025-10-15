@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { arrayMove } from "@dnd-kit/sortable";
 import { useSession } from 'next-auth/react';
+import React from 'react'; // ← React is not defined の対策（追加）
 
 export function useMemos() {
   // カテゴリー追加用テキスト
@@ -491,47 +492,75 @@ export function useMemos() {
 // so we create a wrapper hook that uses the session and memos state to trigger save/load.
 export function useMemosSync(memos, setMemos) {
   const { status } = useSession();
-  const didInitialLoad = useRef(false);
-  const saveTimer = useRef(null);
+  const didInitialLoad = React.useRef(false);
+  const lastServerHash = React.useRef(null);
 
-  // Auto-load once when user signs in
-  useEffect(() => {
-    if (status === 'authenticated' && !didInitialLoad.current) {
-      didInitialLoad.current = true;
-      (async () => {
-        try {
-          const res = await fetch('/api/notes');
-          const data = await res.json();
-          if (res.ok && Array.isArray(data.memos)) {
-            setMemos(data.memos);
-            localStorage.setItem('memos', JSON.stringify(data.memos));
-          }
-        } catch (err) {
-          console.error('Auto-load failed', err);
-        }
-      })();
-    }
-  }, [status, setMemos]);
+  const hash = React.useCallback((v) => {
+    try { return JSON.stringify(v); } catch { return String(Math.random()); }
+  }, []);
 
-  // Auto-save (debounced) when memos change and user is authenticated
-  useEffect(() => {
-    if (status !== 'authenticated') return;
-    // debounce
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(async () => {
+  // 初回ロード：サーバーのスナップショットをそのまま採用（ローカルよりサーバー優先）
+  React.useEffect(() => {
+    if (status !== 'authenticated' || didInitialLoad.current) return;
+    didInitialLoad.current = true;
+
+    (async () => {
       try {
-        await fetch('/api/notes', {
+        const res = await fetch('/api/notes', { cache: 'no-store' });
+        if (!res.ok) return;
+
+        const data = await res.json();
+        const serverMemos = Array.isArray(data?.memos) ? data.memos : null;
+
+        // ローカルの現状を退避（復旧用）
+        try {
+          const localNow = localStorage.getItem('memos');
+          if (localNow) localStorage.setItem('memos_backup_before_load', localNow);
+        } catch {}
+
+        if (serverMemos) {
+          // 以前の「サーバーが空ならローカルを保持」ガードを撤去
+          setMemos(serverMemos);
+          try { localStorage.setItem('memos', JSON.stringify(serverMemos)); } catch {}
+          lastServerHash.current = hash(serverMemos);
+        }
+      } catch (e) {
+        console.error('[sync] initial load failed:', e);
+      }
+    })();
+  }, [status, setMemos, hash]);
+
+  // 自動保存：同一内容は保存しない。空配列の保存は既存がある限りブロック。
+  React.useEffect(() => {
+    if (status !== 'authenticated') return;
+    if (!Array.isArray(memos)) return;
+
+    const currentHash = hash(memos);
+    if (currentHash === lastServerHash.current) return;
+
+    // 一度サーバー状態を見た後は「空での上書き」を防ぐ
+    if (memos.length === 0 && lastServerHash.current !== null) {
+      console.warn('[sync] skip posting empty memos to avoid wiping server data');
+      return;
+    }
+
+    const t = setTimeout(async () => {
+      try {
+        const res = await fetch('/api/notes', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ memos }),
         });
-      } catch (err) {
-        console.error('Auto-save failed', err);
+        if (res.ok) {
+          lastServerHash.current = currentHash;
+        } else {
+          const msg = await res.text().catch(() => '');
+          console.error('[sync] save failed:', res.status, msg);
+        }
+      } catch (e) {
+        console.error('[sync] save error:', e);
       }
-    }, 1000);
+    }, 1200);
 
-    return () => {
-      if (saveTimer.current) clearTimeout(saveTimer.current);
-    };
-  }, [memos, status]);
-}
+    return () => clearTimeout(t);
+  }, [status, memos, hash]);}

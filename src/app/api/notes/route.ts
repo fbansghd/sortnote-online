@@ -1,7 +1,7 @@
-import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/app/api/auth/[...nextauth]/authOptions'
 import { supabaseAdmin } from '@/lib/supabase-server'
+import { NextRequest, NextResponse } from 'next/server'; // ← NextRequest を追加
 
 // GET: return composed categories with tasks for the authenticated user
 export async function GET() {
@@ -52,7 +52,7 @@ export async function GET() {
 
 // POST: accept a payload { memos: [{ id?, category, tasks:[{id?, text, done}] , sort_index? }] }
 // and replace the user's categories/tasks with the provided structure in a transaction
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions)
   const userId = session?.user?.id ?? session?.user?.email ?? null
   if (!session || !userId) {
@@ -60,22 +60,43 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json()
-  const memos = body.memos
-  if (!Array.isArray(memos)) {
-    return NextResponse.json({ error: 'Invalid memos payload' }, { status: 400 })
+  const incoming = Array.isArray(body?.memos) ? body.memos : null
+
+  // バリデーション
+  if (!Array.isArray(incoming)) {
+    return NextResponse.json({ error: 'Invalid payload: memos must be array' }, { status: 400 })
   }
 
-  // We'll perform deletions and inserts inside a transaction-like sequence.
-  // Supabase JS doesn't expose multi-statement transactions for Postgres directly,
-  // so we emulate by deleting existing rows for the user and inserting new ones.
+  // 既存があるのに空配列で上書きするのをブロック（categories/tasksベース）
+  if (incoming.length === 0) {
+    const { count: catCount, error: catCountErr } = await supabaseAdmin
+      .from('categories')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId)
+
+    const { count: taskCount, error: taskCountErr } = await supabaseAdmin
+      .from('tasks')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId)
+
+    if (catCountErr || taskCountErr) {
+      console.error('Count error:', catCountErr || taskCountErr)
+      return NextResponse.json({ error: 'Count failed' }, { status: 500 })
+    }
+
+    if ((catCount ?? 0) > 0 || (taskCount ?? 0) > 0) {
+      return NextResponse.json({ error: 'Refuse empty overwrite' }, { status: 409 })
+    }
+    // 既存がないなら空保存=初期化は通す
+  }
+
   try {
-    // Delete existing tasks and categories for user
+    // 置換方式：既存削除 → 挿入
     await supabaseAdmin.from('tasks').delete().eq('user_id', userId)
     await supabaseAdmin.from('categories').delete().eq('user_id', userId)
 
-    // Insert categories and collect their IDs (if id provided, keep it; otherwise generated)
-    for (let i = 0; i < memos.length; i++) {
-      const cat = memos[i]
+    for (let i = 0; i < incoming.length; i++) {
+      const cat = incoming[i]
       const title = cat.category || cat.title || 'Untitled'
       const sort_index = cat.sort_index ?? i
 
@@ -91,8 +112,7 @@ export async function POST(request: Request) {
 
       const newCatId = insertedCats?.[0]?.id
 
-      // Insert tasks for this category
-  // @ts-expect-error - allow flexible task object shape from client
+      // @ts-expect-error - flexible task shape
       const tasksToInsert = (Array.isArray(cat.tasks) ? cat.tasks : []).map((t) => ({
         user_id: userId,
         category_id: newCatId,
