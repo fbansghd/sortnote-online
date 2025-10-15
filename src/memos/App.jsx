@@ -7,6 +7,9 @@ import SortableCategory from "./SortableCategory";
 import React from "react";
 import { useSession, signOut } from 'next-auth/react';
 
+// 追加: タイトル正規化（このファイル内でも使用）
+const normalizeTitle = (s) => (s || '').trim().toLowerCase();
+
 const arrowSize = 35;
 const arrowStrokeWidth = 2;
 
@@ -64,11 +67,11 @@ function App() {
     if (!isMobile || showSidebar || memos.length === 0) return;
 
     const current = memos[mobileCategoryIndex];
-    if (current && !collapsedCategories.includes(current.id)) return;
+    if (current && !collapsedCategories.includes(normalizeTitle(current.category))) return;
 
     for (let offset = 1; offset < memos.length; offset += 1) {
       const nextIdx = (mobileCategoryIndex + offset) % memos.length;
-      if (!collapsedCategories.includes(memos[nextIdx].id)) {
+      if (!collapsedCategories.includes(normalizeTitle(memos[nextIdx].category))) {
         setMobileCategoryIndex(nextIdx);
         break;
       }
@@ -135,14 +138,14 @@ function App() {
                 add
               </button>
             </div>
-            {/* 折り畳み中カテゴリーの一覧表示 */}
+            {/* 折り畳み中カテゴリーの一覧表示（タイトルで判定） */}
             {memos
-              .filter(cat => collapsedCategories.includes(cat.id))
+              .filter(cat => collapsedCategories.includes(normalizeTitle(cat.category)))
               .map(cat => (
                 <div
                   key={cat.id}
                   className={styles.sidebarCategory}
-                  onClick={() => toggleCategoryCollapse(cat.id)}
+                  onClick={() => toggleCategoryCollapse(cat.category)}
                 >
                   {cat.category}
                 </div>
@@ -198,8 +201,8 @@ function App() {
                 {/* 折り畳み中以外のカテゴリーを表示 */}
                 {memos
                   .map((categoryItem, realIndex) => {
-                    // 折り畳み中のカテゴリーは早期リターン
-                    if (collapsedCategories.includes(categoryItem.id)) {
+                    // 折り畳み中のカテゴリーは早期リターン（タイトルで判定）
+                    if (collapsedCategories.includes(normalizeTitle(categoryItem.category))) {
                       return null;
                     }
 
@@ -219,10 +222,10 @@ function App() {
                           label={categoryItem.category}
                           onDelete={() => {
                             if (window.confirm("本当にこのカテゴリを削除しますか？")) {
-                              deleteMemo(realIndex); // 正しいインデックス
+                              deleteMemo(realIndex);
                             }
                           }}
-                          onCollapse={() => toggleCategoryCollapse(categoryItem.id)}
+                          onCollapse={() => toggleCategoryCollapse(categoryItem.category)}
                         >
                           <div className={styles.categoryContainer}>
                             <div>

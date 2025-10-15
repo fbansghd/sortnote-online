@@ -4,6 +4,9 @@ import { arrayMove } from "@dnd-kit/sortable";
 import { useSession } from 'next-auth/react';
 import React from 'react'; // ← React is not defined の対策（追加）
 
+// 追加: タイトル正規化
+const normalizeTitle = (s) => (s || '').trim().toLowerCase();
+
 export function useMemos() {
   // カテゴリー追加用テキスト
   const [text, setText] = useState("");
@@ -35,7 +38,7 @@ export function useMemos() {
   // モバイル用：表示中カテゴリーのインデックス
   const [mobileCategoryIndex, setMobileCategoryIndex] = useState(0);
 
-  // 折り畳み中カテゴリーIDリスト
+  // 折り畳み中カテゴリーIDリスト → タイトルキーで保持
   const [collapsedCategories, setCollapsedCategories] = useState(() => {
     const saved = localStorage.getItem("collapsedCategories");
     return saved ? JSON.parse(saved) : [];
@@ -46,19 +49,20 @@ export function useMemos() {
     localStorage.setItem("collapsedCategories", JSON.stringify(collapsedCategories));
   }, [collapsedCategories]);
 
-  // カテゴリーの折り畳み/展開切り替え
-  const toggleCategoryCollapse = (categoryId) => {
+  // カテゴリーの折り畳み/展開切り替え（idではなくタイトルで）
+  const toggleCategoryCollapse = (categoryKey) => {
+    const key = normalizeTitle(categoryKey);
     setCollapsedCategories(prev =>
-      prev.includes(categoryId)
-        ? prev.filter(id => id !== categoryId)
-        : [...prev, categoryId]
+      prev.includes(key)
+        ? prev.filter(k => k !== key)
+        : [...prev, key]
     );
   };
 
-  // 折り畳まれていないカテゴリーのインデックス一覧取得
+  // 折り畳まれていないカテゴリーのインデックス一覧取得（タイトルで照合）
   const getOpenCategoryIndexes = () =>
     memos
-      .map((cat, idx) => (!collapsedCategories.includes(cat.id) ? idx : null))
+      .map((cat, idx) => (!collapsedCategories.includes(normalizeTitle(cat.category)) ? idx : null))
       .filter(idx => idx !== null);
 
   // モバイル用：前のカテゴリーへ切り替え
@@ -563,4 +567,5 @@ export function useMemosSync(memos, setMemos) {
     }, 1200);
 
     return () => clearTimeout(t);
-  }, [status, memos, hash]);}
+  }, [status, memos, hash]);
+} // ← useMemosSync を閉じる
