@@ -26,8 +26,8 @@ function App() {
     loadMemosFromServer,
     addCategory,
     addTaskToCategory,
-  toogleTaskDone,
-  deleteTaskById,
+    toogleTaskDone,
+    deleteTask,
     deleteMemo,
     showTaskInput,
     toggleTaskInput,
@@ -256,7 +256,7 @@ function App() {
                                       text={taskItem.text}
                                       done={taskItem.done}
                                       onToggle={() => toogleTaskDone(realIndex, taskItem.id)} // 正しいインデックス
-                                      onDelete={() => deleteTaskById(categoryItem.id, taskItem.id)} // IDベースで安全
+                                      onDelete={() => deleteTask(realIndex, taskItem.id)} // 正しいインデックス
                                     />
                                   ))}
                               </SortableContext>
