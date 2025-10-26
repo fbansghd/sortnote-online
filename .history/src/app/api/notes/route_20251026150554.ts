@@ -79,9 +79,24 @@ export async function POST(request: NextRequest) {
   }
 
   if (rawMemos.length === 0) {
-    // 空配列なら必ず全削除
-    await supabaseAdmin.from('tasks').delete().eq('user_id', userId);
-    await supabaseAdmin.from('categories').delete().eq('user_id', userId);
+    // 空で上書きしない
+    const { count: catCount } = await supabaseAdmin.from('categories').select('id', { count: 'exact', head: true }).eq('user_id', userId);
+    const { count: taskCount } = await supabaseAdmin.from('tasks').select('id', { count: 'exact', head: true }).eq('user_id', userId);
+    if ((catCount ?? 0) > 0 || (taskCount ?? 0) > 0) {
+      return NextResponse.json({ error: 'Refuse empty overwrite' }, { status: 409 });
+    }
+    return NextResponse.json({ ok: true });
+  }
+
+  if (incoming.length === 0) {
+    // 既存があるのに空で上書きしない
+    const { count: catCount } = await supabaseAdmin
+      .from('categories').select('id', { count: 'exact', head: true }).eq('user_id', userId);
+    const { count: taskCount } = await supabaseAdmin
+      .from('tasks').select('id', { count: 'exact', head: true }).eq('user_id', userId);
+    if ((catCount ?? 0) > 0 || (taskCount ?? 0) > 0) {
+      return NextResponse.json({ error: 'Refuse empty overwrite' }, { status: 409 });
+    }
     return NextResponse.json({ ok: true });
   }
 

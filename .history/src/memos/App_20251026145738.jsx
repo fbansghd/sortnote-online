@@ -21,12 +21,14 @@ function App() {
     setTaskInputs,
     memos,
     setMemos,
+    // 追加: 手動保存/読込
     saveMemosToServer,
     loadMemosFromServer,
     addCategory,
     addTaskToCategory,
     toogleTaskDone,
     deleteTaskById,
+    deleteTask,
     deleteCategory,
     showTaskInput,
     toggleTaskInput,
@@ -255,7 +257,7 @@ function App() {
                                       text={taskItem.text}
                                       done={taskItem.done}
                                       onToggle={() => toogleTaskDone(realIndex, taskItem.id)} // 正しいインデックス
-                                      onDelete={() => deleteTaskById(categoryItem.id, taskItem.id)} // categoryItem.idはID
+                                      onDelete={() => deleteTask(realIndex, taskItem.id)} // 正しいインデックス
                                     />
                                   ))}
                               </SortableContext>

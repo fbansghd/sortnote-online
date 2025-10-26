@@ -512,7 +512,7 @@ export function useMemosSync(memos, setMemos) {
     })();
   }, [status, setMemos]);
 
-  // 自動保存：空でも送る
+  // 自動保存：空は送らない（上書き防止）
   React.useEffect(() => {
     if (status !== 'authenticated') return;
     if (!Array.isArray(memos)) return;
@@ -526,8 +526,8 @@ export function useMemosSync(memos, setMemos) {
       })),
     }));
 
-    // ↓この行を削除
-    // if (cleaned.length === 0) return;
+    // 空は送らない
+    if (cleaned.length === 0) return;
 
     const outgoing = { memos: cleaned };
     const outgoingHash = JSON.stringify(outgoing);

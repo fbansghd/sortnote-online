@@ -224,18 +224,10 @@ export function useMemos() {
     });
   };
 
-  // カテゴリー削除（そのカテゴリーのtasksも同時に削除）
-  const deleteCategory = (catIdx) => {
-    setMemos((memos) => {
-      // 削除するカテゴリーIDを取得
-      const removedCategory = memos[catIdx];
-      if (!removedCategory) return memos;
-      const removedCategoryId = removedCategory.id;
-      // カテゴリーとそのtasksを削除
-      return memos.filter((cat, i) => i !== catIdx);
-    });
+  // カテゴリー削除
+  const deleteMemo = (catIdx) => {
+    setMemos((memos) => memos.filter((_, i) => i !== catIdx));
     setTaskInputs((inputs) => inputs.filter((_, i) => i !== catIdx));
-    saveMemosToServer();
   };
 
   // DnD Kit: ドラッグ開始時の処理
@@ -376,61 +368,6 @@ export function useMemos() {
     localStorage.setItem("isAltColor", JSON.stringify(isAltColor));
   }, [isAltColor]);
 
-  
-
-  // Server sync helpers (POST/GET to /api/notes)
-  const saveMemosToServer = async () => {
-    try {
-      const cleaned = (Array.isArray(memos) ? memos : []).map((c, i) => ({
-        // 重複排除しない。IDは送らない。
-        category: c.category,
-        sort_index: i,
-        tasks: (Array.isArray(c.tasks) ? c.tasks : []).map(t => ({
-          text: t.text ?? '',
-          done: !!t.done,
-        })),
-      }));
-
-      if (cleaned.length === 0) return { ok: true, skipped: true };
-
-      const res = await fetch('/api/notes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ memos: cleaned }),
-      });
-      const data = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(data?.error || 'Save failed');
-      return { ok: true };
-    } catch (err) {
-      console.error('Save failed:', err);
-      return { ok: false, error: String(err) };
-    }
-  };
-
-  const loadMemosFromServer = async () => {
-    try {
-      const res = await fetch('/api/notes');
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || 'Load failed');
-
-      const serverMemos = data?.memos;
-      if (Array.isArray(serverMemos)) {
-        setMemos(serverMemos);
-        localStorage.setItem('memos', JSON.stringify(serverMemos));
-      }
-
-      if (Array.isArray(data?.collapsedTitles)) {
-        setCollapsedCategories(data.collapsedTitles); // サーバー状態を採用
-        localStorage.setItem('collapsedCategories', JSON.stringify(data.collapsedTitles));
-      }
-
-      return { ok: true, memos: serverMemos };
-    } catch (err) {
-      console.error('Load failed:', err);
-      return { ok: false, error: String(err) };
-    }
-  };
-
   // すべての状態・関数を返す
   return {
     text,
@@ -443,7 +380,7 @@ export function useMemos() {
     addTaskToCategory,
     toogleTaskDone,
     deleteTaskById,
-    deleteCategory,
+    deleteMemo,
     showTaskInput,
     setShowTaskInput,
     toggleTaskInput,
@@ -467,8 +404,58 @@ export function useMemos() {
     setMobileCategoryIndex,
     handlePrevCategory,
     handleNextCategory,
-    saveMemosToServer,
-    loadMemosFromServer,
+    // Server sync helpers (POST/GET to /api/notes)
+    async saveMemosToServer() {
+      try {
+        const cleaned = (Array.isArray(memos) ? memos : []).map((c, i) => ({
+          // 重複排除しない。IDは送らない。
+          category: c.category,
+          sort_index: i,
+          tasks: (Array.isArray(c.tasks) ? c.tasks : []).map(t => ({
+            text: t.text ?? '',
+            done: !!t.done,
+          })),
+        }));
+
+        if (cleaned.length === 0) return { ok: true, skipped: true };
+
+        const res = await fetch('/api/notes', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ memos: cleaned }),
+        });
+        const data = await res.json().catch(() => null);
+        if (!res.ok) throw new Error(data?.error || 'Save failed');
+        return { ok: true };
+      } catch (err) {
+        console.error('Save failed:', err);
+        return { ok: false, error: String(err) };
+      }
+    },
+    async loadMemosFromServer() {
+      try {
+        const res = await fetch('/api/notes');
+        const data = await res.json();
+        if (!res.ok) throw new Error(data?.error || 'Load failed');
+
+        const serverMemos = data?.memos;
+        if (Array.isArray(serverMemos)) {
+          setMemos(serverMemos);
+          localStorage.setItem('memos', JSON.stringify(serverMemos));
+        }
+
+        if (Array.isArray(data?.collapsedTitles)) {
+          setCollapsedCategories(data.collapsedTitles); // サーバー状態を採用
+          localStorage.setItem('collapsedCategories', JSON.stringify(data.collapsedTitles));
+        }
+
+        return { ok: true, memos: serverMemos };
+      } catch (err) {
+        console.error('Load failed:', err);
+        return { ok: false, error: String(err) };
+      }
+    },
+    // Auto-load/save helpers are implemented below via hooks
   };
 }
 
@@ -512,7 +499,7 @@ export function useMemosSync(memos, setMemos) {
     })();
   }, [status, setMemos]);
 
-  // 自動保存：空でも送る
+  // 自動保存：空は送らない（上書き防止）
   React.useEffect(() => {
     if (status !== 'authenticated') return;
     if (!Array.isArray(memos)) return;
@@ -526,8 +513,8 @@ export function useMemosSync(memos, setMemos) {
       })),
     }));
 
-    // ↓この行を削除
-    // if (cleaned.length === 0) return;
+    // 空は送らない
+    if (cleaned.length === 0) return;
 
     const outgoing = { memos: cleaned };
     const outgoingHash = JSON.stringify(outgoing);

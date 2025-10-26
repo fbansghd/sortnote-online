@@ -85,6 +85,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true });
   }
 
+  if (incoming.length === 0) {
+    // 既存があるのに空で上書きしない
+    const { count: catCount } = await supabaseAdmin
+      .from('categories').select('id', { count: 'exact', head: true }).eq('user_id', userId);
+    const { count: taskCount } = await supabaseAdmin
+      .from('tasks').select('id', { count: 'exact', head: true }).eq('user_id', userId);
+    if ((catCount ?? 0) > 0 || (taskCount ?? 0) > 0) {
+      return NextResponse.json({ error: 'Refuse empty overwrite' }, { status: 409 });
+    }
+    return NextResponse.json({ ok: true });
+  }
+
   // 追加: タスク用の型ガード
   const isRawTask = (v: unknown): v is { text?: unknown; done?: unknown } =>
     typeof v === 'object' && v !== null;
