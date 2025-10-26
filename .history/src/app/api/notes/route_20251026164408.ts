@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Empty or invalid JSON body' }, { status: 400 });
   }
 
-  const rawMemos = (body as { memos?: unknown })?.memos;
+  const rawMemos = (payload as { memos?: unknown })?.memos;
   if (!Array.isArray(rawMemos)) {
     return NextResponse.json({ error: 'Invalid payload: { memos: [] } required' }, { status: 400 });
   }
@@ -131,18 +131,3 @@ export async function POST(request: NextRequest) {
 
   return NextResponse.json({ ok: true });
 }
-
-type TaskPayload = {
-  text: string;
-  done: boolean;
-};
-
-type CategoryPayload = {
-  category: string;
-  sort_index?: number;
-  tasks: TaskPayload[];
-};
-
-type MemosPayload = {
-  memos: CategoryPayload[];
-};
