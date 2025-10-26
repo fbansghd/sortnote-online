@@ -73,83 +73,61 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Empty or invalid JSON body' }, { status: 400 });
   }
 
-  const rawMemos = body?.memos;
+  const rawMemos = (body as { memos?: unknown })?.memos;
   if (!Array.isArray(rawMemos)) {
     return NextResponse.json({ error: 'Invalid payload: { memos: [] } required' }, { status: 400 });
   }
 
-  // 既存カテゴリ・タスク取得
-  const { data: existingCats } = await supabaseAdmin
-    .from('categories')
-    .select('id')
-    .eq('user_id', userId);
-
-  const existingCatIds = new Set((existingCats ?? []).map(c => c.id));
-  const incomingCatIds = new Set(rawMemos.map(c => c.id).filter(Boolean));
-
-  const { data: existingTasks } = await supabaseAdmin
-    .from('tasks')
-    .select('id, category_id')
-    .eq('user_id', userId);
-
-  const existingTaskIds = new Set((existingTasks ?? []).map(t => t.id));
-
-  // カテゴリー削除（DBにあるが送信されていないID）
-  const toDeleteCatIds = [...existingCatIds].filter(id => !incomingCatIds.has(id));
-  if (toDeleteCatIds.length > 0) {
-    await supabaseAdmin.from('tasks').delete().in('category_id', toDeleteCatIds);
-    await supabaseAdmin.from('categories').delete().in('id', toDeleteCatIds);
+  if (rawMemos.length === 0) {
+    // 空配列なら必ず全削除
+    await supabaseAdmin.from('tasks').delete().eq('user_id', userId);
+    await supabaseAdmin.from('categories').delete().eq('user_id', userId);
+    return NextResponse.json({ ok: true });
   }
 
-  // カテゴリーごとにUPDATE/INSERT
-  for (const [i, c] of rawMemos.entries()) {
-    let categoryId = c.id;
-    if (categoryId && existingCatIds.has(categoryId)) {
-      // UPDATE category
-      await supabaseAdmin.from('categories').update({
-        title: c.category,
-        sort_index: i,
-      }).eq('id', categoryId);
-    } else {
-      // INSERT category
-      const { data: newCat } = await supabaseAdmin.from('categories').insert({
-        user_id: userId,
-        title: c.category,
-        sort_index: i,
-      }).select('id').single();
-      categoryId = newCat?.id;
-    }
+  // 追加: タスク用の型ガード
+  const isRawTask = (v: unknown): v is { text?: unknown; done?: unknown } =>
+    typeof v === 'object' && v !== null;
 
-    // タスクIDリスト
-    const incomingTasks = Array.isArray(c.tasks) ? c.tasks : [];
-    const incomingTaskIds = new Set(incomingTasks.map(t => t.id).filter(Boolean));
-    const existingTasksInCat = (existingTasks ?? []).filter(t => t.category_id === categoryId);
-    const existingTaskIdsInCat = new Set(existingTasksInCat.map(t => t.id));
+  // IDは完全に無視して正規化（index順を保持）
+  const cats = rawMemos.map((c: Record<string, unknown>, i: number) => {
+    const title = String(c?.category ?? c?.title ?? 'Untitled');
+    const sort_index = Number.isFinite(c?.sort_index as number) ? (c.sort_index as number) : i;
 
-    // タスク削除（DBにあるが送信されていないID）
-    const toDeleteTaskIds = [...existingTaskIdsInCat].filter(id => !incomingTaskIds.has(id));
-    if (toDeleteTaskIds.length > 0) {
-      await supabaseAdmin.from('tasks').delete().in('id', toDeleteTaskIds);
-    }
+    const tasksRaw: unknown[] = Array.isArray(c?.tasks) ? (c.tasks as unknown[]) : [];
+    const tasks = tasksRaw
+      .filter(isRawTask)
+      .map((t) => ({ text: String(t.text ?? ''), done: !!t.done }))
+      .filter((t) => t.text.length > 0);
 
-    // タスクUPDATE/INSERT
-    for (const t of incomingTasks) {
-      if (t.id && existingTaskIds.has(t.id)) {
-        // UPDATE
-        await supabaseAdmin.from('tasks').update({
-          text: t.text,
-          done: !!t.done,
-        }).eq('id', t.id);
-      } else {
-        // INSERT
-        await supabaseAdmin.from('tasks').insert({
-          user_id: userId,
-          category_id: categoryId,
-          text: t.text ?? '',
-          done: !!t.done,
-        });
-      }
-    }
+    return { title, sort_index, tasks };
+  });
+
+  // 置換（tasks→categories の順で削除してから insert）
+  const delTasks = await supabaseAdmin.from('tasks').delete().eq('user_id', userId);
+  if (delTasks.error) return NextResponse.json({ error: delTasks.error.message }, { status: 500 });
+  const delCats = await supabaseAdmin.from('categories').delete().eq('user_id', userId);
+  if (delCats.error) return NextResponse.json({ error: delCats.error.message }, { status: 500 });
+
+  // カテゴリ挿入（返却行は入力順に対応）
+  const { data: insertedCats, error: catErr } = await supabaseAdmin
+    .from('categories')
+    .insert(cats.map(c => ({ user_id: userId, title: c.title, sort_index: c.sort_index })))
+    .select('id');
+  if (catErr) return NextResponse.json({ error: catErr.message }, { status: 500 });
+
+  // 新しい category_id に付け替えてタスク挿入（index対応）
+  const taskRows = cats.flatMap((c, i) => {
+    const cid = insertedCats?.[i]?.id;
+    if (!cid) return [];
+    return c.tasks.map(t => ({ user_id: userId, category_id: cid, text: t.text, done: t.done }));
+  });
+
+  if (taskRows.length > 0) {
+    const { error: taskErr } = await supabaseAdmin
+      .from('tasks')
+      .insert(taskRows); // ← upsert + onConflict を廃止
+    if (taskErr) return NextResponse.json({ error: taskErr.message }, { status: 500 });
   }
 
   return NextResponse.json({ ok: true });
@@ -166,8 +144,4 @@ type CategoryPayload = {
   category: string;
   sort_index?: number;
   tasks: TaskPayload[];
-};
-
-type MemosPayload = {
-  memos: CategoryPayload[];
 };

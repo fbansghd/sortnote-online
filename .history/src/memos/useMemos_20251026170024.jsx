@@ -383,11 +383,10 @@ export function useMemos() {
   const saveMemosToServer = async () => {
     try {
       const cleaned = (Array.isArray(memos) ? memos : []).map((c, i) => ({
-        id: c.id, // ←追加
+        // 重複排除しない。IDは送らない。
         category: c.category,
         sort_index: i,
         tasks: (Array.isArray(c.tasks) ? c.tasks : []).map(t => ({
-          id: t.id, // ←追加
           text: t.text ?? '',
           done: !!t.done,
         })),
