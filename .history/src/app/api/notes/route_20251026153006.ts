@@ -59,15 +59,16 @@ export async function GET() {
   return NextResponse.json({ ok: true, memos: composed, collapsedTitles })
 }
 
-// POST: idベースでUPDATE/INSERT/DELETEする
+// POST: accept a payload { memos: [{ id?, category, tasks:[{id?, text, done}] , sort_index? }] }
+// and replace the user's categories/tasks with the provided structure in a transaction
 export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions);
   const userId = session?.user?.id ?? session?.user?.email ?? null;
   if (!session || !userId) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
 
-  let body: MemosPayload;
+  let payload: unknown;
   try {
-    body = await request.json();
+    payload = await request.json();
   } catch {
     return NextResponse.json({ error: 'Empty or invalid JSON body' }, { status: 400 });
   }
@@ -108,25 +109,27 @@ export async function POST(request: NextRequest) {
   const delCats = await supabaseAdmin.from('categories').delete().eq('user_id', userId);
   if (delCats.error) return NextResponse.json({ error: delCats.error.message }, { status: 500 });
 
-  // カテゴリ挿入（返却行は入力順に対応）
+  // categoriesを挿入
   const { data: insertedCats, error: catErr } = await supabaseAdmin
     .from('categories')
     .insert(cats.map(c => ({ user_id: userId, title: c.title, sort_index: c.sort_index })))
     .select('id');
   if (catErr) return NextResponse.json({ error: catErr.message }, { status: 500 });
 
-  // 新しい category_id に付け替えてタスク挿入（index対応）
+  // tasksを挿入
   const taskRows = cats.flatMap((c, i) => {
-    const cid = insertedCats?.[i]?.id;
+    const cid = insertedCats?.[i]?.id; // ←新しく発行されたIDを使う
     if (!cid) return [];
-    return c.tasks.map(t => ({ user_id: userId, category_id: cid, text: t.text, done: t.done }));
+    return c.tasks.map(t => ({
+      user_id: userId,
+      category_id: cid, // ←ここで新IDを使う
+      text: t.text,
+      done: t.done,
+    }));
   });
 
   if (taskRows.length > 0) {
-    const { error: taskErr } = await supabaseAdmin
-      .from('tasks')
-      .insert(taskRows); // ← upsert + onConflict を廃止
-    if (taskErr) return NextResponse.json({ error: taskErr.message }, { status: 500 });
+    await supabaseAdmin.from('tasks').insert(taskRows);
   }
 
   return NextResponse.json({ ok: true });
