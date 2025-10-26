@@ -3,7 +3,6 @@ import { v4 as uuidv4 } from "uuid";
 import { arrayMove } from "@dnd-kit/sortable";
 import { useSession } from 'next-auth/react';
 import React from 'react'; // ← React is not defined の対策（追加）
-import { createClient } from '@supabase/supabase-js';
 
 // 追加: タイトル正規化
 const normalizeTitle = (s) => (s || '').trim().toLowerCase();
@@ -380,6 +379,7 @@ export function useMemos() {
     addCategory,
     addTaskToCategory,
     toogleTaskDone,
+    deleteTask,
     deleteTaskById,
     deleteMemo,
     showTaskInput,

@@ -3,7 +3,6 @@ import { v4 as uuidv4 } from "uuid";
 import { arrayMove } from "@dnd-kit/sortable";
 import { useSession } from 'next-auth/react';
 import React from 'react'; // ← React is not defined の対策（追加）
-import { createClient } from '@supabase/supabase-js';
 
 // 追加: タイトル正規化
 const normalizeTitle = (s) => (s || '').trim().toLowerCase();
@@ -195,6 +194,32 @@ export function useMemos() {
     });
   };
 
+  const deleteTask = (catIdx, taskId) => {
+    setMemos((prev) => {
+      try {
+        if (catIdx < 0 || catIdx >= prev.length) {
+          console.error(`Invalid category index: ${catIdx}`);
+          return prev;
+        }
+
+        const newMemos = [...prev];
+        const category = newMemos[catIdx];
+        
+        if (!category || !category.tasks) {
+          console.error(`Invalid category or tasks at index ${catIdx}`);
+          return prev;
+        }
+
+        const tasks = category.tasks.filter(task => task.id !== taskId);
+        newMemos[catIdx] = { ...category, tasks };
+        return newMemos;
+      } catch (error) {
+        console.error('Error deleting task:', error);
+        return prev;
+      }
+    });
+  };
+
   // Task delete by IDs (safer than index-based)
   const deleteTaskById = (categoryId, taskId) => {
     setMemos((prev) => {
@@ -371,92 +396,49 @@ export function useMemos() {
 
   // すべての状態・関数を返す
   return {
-    text,
-    setText,
-    taskInputs,
-    setTaskInputs,
-    memos,
-    setMemos,
+    // 入力・状態
+    text, setText,
+    taskInputs, setTaskInputs,
+    memos, setMemos,
+    isMobile, setIsMobile,
+    showSidebar, setShowSidebar,
+    isAltColor, setIsAltColor,
+    mobileCategoryIndex, setMobileCategoryIndex,
+
+    // カテゴリー操作
     addCategory,
+    deleteMemo,
+    handlePrevCategory,
+    handleNextCategory,
+
+    // タスク操作
     addTaskToCategory,
     toogleTaskDone,
+    deleteTask,
     deleteTaskById,
-    deleteMemo,
-    showTaskInput,
-    setShowTaskInput,
-    toggleTaskInput,
-    isAltColor,
-    setIsAltColor,
-    activeTask,
-    setActiveTask,
-    activeCategory,
-    setActiveCategory,
+
+    // DnD（ドラッグ＆ドロップ）
+    activeTask, setActiveTask,
+    activeCategory, setActiveCategory,
     handleDragStart,
     handleDragEnd,
     handleDragCancel,
-    collapsedCategories,
-    setCollapsedCategories,
+
+    // タスク入力欄表示
+    showTaskInput, setShowTaskInput,
+    toggleTaskInput,
+
+    // 折り畳み
+    collapsedCategories, setCollapsedCategories,
     toggleCategoryCollapse,
-    showSidebar,
-    setShowSidebar,
-    isMobile,
-    setIsMobile,
-    mobileCategoryIndex,
-    setMobileCategoryIndex,
-    handlePrevCategory,
-    handleNextCategory,
-    // Server sync helpers (POST/GET to /api/notes)
-    async saveMemosToServer() {
-      try {
-        const cleaned = (Array.isArray(memos) ? memos : []).map((c, i) => ({
-          // 重複排除しない。IDは送らない。
-          category: c.category,
-          sort_index: i,
-          tasks: (Array.isArray(c.tasks) ? c.tasks : []).map(t => ({
-            text: t.text ?? '',
-            done: !!t.done,
-          })),
-        }));
+    getOpenCategoryIndexes,
 
-        if (cleaned.length === 0) return { ok: true, skipped: true };
+    // サーバー同期
+    saveMemosToServer,
+    loadMemosFromServer,
 
-        const res = await fetch('/api/notes', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ memos: cleaned }),
-        });
-        const data = await res.json().catch(() => null);
-        if (!res.ok) throw new Error(data?.error || 'Save failed');
-        return { ok: true };
-      } catch (err) {
-        console.error('Save failed:', err);
-        return { ok: false, error: String(err) };
-      }
-    },
-    async loadMemosFromServer() {
-      try {
-        const res = await fetch('/api/notes');
-        const data = await res.json();
-        if (!res.ok) throw new Error(data?.error || 'Load failed');
-
-        const serverMemos = data?.memos;
-        if (Array.isArray(serverMemos)) {
-          setMemos(serverMemos);
-          localStorage.setItem('memos', JSON.stringify(serverMemos));
-        }
-
-        if (Array.isArray(data?.collapsedTitles)) {
-          setCollapsedCategories(data.collapsedTitles); // サーバー状態を採用
-          localStorage.setItem('collapsedCategories', JSON.stringify(data.collapsedTitles));
-        }
-
-        return { ok: true, memos: serverMemos };
-      } catch (err) {
-        console.error('Load failed:', err);
-        return { ok: false, error: String(err) };
-      }
-    },
-    // Auto-load/save helpers are implemented below via hooks
+    // ユーティリティ
+    cleanupDuplicates,
   };
 }
 

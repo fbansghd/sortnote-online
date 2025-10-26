@@ -3,7 +3,6 @@ import { v4 as uuidv4 } from "uuid";
 import { arrayMove } from "@dnd-kit/sortable";
 import { useSession } from 'next-auth/react';
 import React from 'react'; // ← React is not defined の対策（追加）
-import { createClient } from '@supabase/supabase-js';
 
 // 追加: タイトル正規化
 const normalizeTitle = (s) => (s || '').trim().toLowerCase();
@@ -380,6 +379,7 @@ export function useMemos() {
     addCategory,
     addTaskToCategory,
     toogleTaskDone,
+    deleteTask,
     deleteTaskById,
     deleteMemo,
     showTaskInput,
@@ -405,6 +405,18 @@ export function useMemos() {
     setMobileCategoryIndex,
     handlePrevCategory,
     handleNextCategory,
+    // Clean up duplicates
+    cleanupDuplicates() {
+      const uniqueMemos = memos.filter((memo, index, self) => 
+        index === self.findIndex(m => m.category === memo.category)
+      );
+      if (uniqueMemos.length !== memos.length) {
+        setMemos(uniqueMemos);
+        localStorage.setItem('memos', JSON.stringify(uniqueMemos));
+        return { removed: memos.length - uniqueMemos.length };
+      }
+      return { removed: 0 };
+    },
     // Server sync helpers (POST/GET to /api/notes)
     async saveMemosToServer() {
       try {

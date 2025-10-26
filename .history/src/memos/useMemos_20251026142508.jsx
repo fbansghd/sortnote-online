@@ -3,7 +3,6 @@ import { v4 as uuidv4 } from "uuid";
 import { arrayMove } from "@dnd-kit/sortable";
 import { useSession } from 'next-auth/react';
 import React from 'react'; // ← React is not defined の対策（追加）
-import { createClient } from '@supabase/supabase-js';
 
 // 追加: タイトル正規化
 const normalizeTitle = (s) => (s || '').trim().toLowerCase();
@@ -195,6 +194,32 @@ export function useMemos() {
     });
   };
 
+  const deleteTask = (catIdx, taskId) => {
+    setMemos((prev) => {
+      try {
+        if (catIdx < 0 || catIdx >= prev.length) {
+          console.error(`Invalid category index: ${catIdx}`);
+          return prev;
+        }
+
+        const newMemos = [...prev];
+        const category = newMemos[catIdx];
+        
+        if (!category || !category.tasks) {
+          console.error(`Invalid category or tasks at index ${catIdx}`);
+          return prev;
+        }
+
+        const tasks = category.tasks.filter(task => task.id !== taskId);
+        newMemos[catIdx] = { ...category, tasks };
+        return newMemos;
+      } catch (error) {
+        console.error('Error deleting task:', error);
+        return prev;
+      }
+    });
+  };
+
   // Task delete by IDs (safer than index-based)
   const deleteTaskById = (categoryId, taskId) => {
     setMemos((prev) => {
@@ -380,6 +405,7 @@ export function useMemos() {
     addCategory,
     addTaskToCategory,
     toogleTaskDone,
+    deleteTask,
     deleteTaskById,
     deleteMemo,
     showTaskInput,
@@ -405,6 +431,18 @@ export function useMemos() {
     setMobileCategoryIndex,
     handlePrevCategory,
     handleNextCategory,
+    // Clean up duplicates
+    cleanupDuplicates() {
+      const uniqueMemos = memos.filter((memo, index, self) => 
+        index === self.findIndex(m => m.category === memo.category)
+      );
+      if (uniqueMemos.length !== memos.length) {
+        setMemos(uniqueMemos);
+        localStorage.setItem('memos', JSON.stringify(uniqueMemos));
+        return { removed: memos.length - uniqueMemos.length };
+      }
+      return { removed: 0 };
+    },
     // Server sync helpers (POST/GET to /api/notes)
     async saveMemosToServer() {
       try {

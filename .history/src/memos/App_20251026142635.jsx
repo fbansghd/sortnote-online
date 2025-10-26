@@ -27,7 +27,7 @@ function App() {
     addCategory,
     addTaskToCategory,
     toogleTaskDone,
-    deleteTaskById,
+  deleteTaskById,
     deleteMemo,
     showTaskInput,
     toggleTaskInput,

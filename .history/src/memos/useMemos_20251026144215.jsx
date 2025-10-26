@@ -542,3 +542,62 @@ export function useMemosSync(memos, setMemos) {
     return () => clearTimeout(t);
   }, [status, memos]);
 }
+
+export async function POST(request: NextRequest) {
+  const session = await getServerSession(authOptions);
+  const userId = session?.user?.id ?? session?.user?.email ?? null;
+  if (!session || !userId) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+
+  let body: unknown;
+  try { body = await request.json(); }
+  catch { return NextResponse.json({ error: 'Empty or invalid JSON body' }, { status: 400 }); }
+
+  const rawMemos = (body as any)?.memos;
+  if (!Array.isArray(rawMemos)) return NextResponse.json({ error: 'Invalid payload: { memos: [] } required' }, { status: 400 });
+
+  // トランザクション開始（Supabaseは複数APIでの完全トランザクションは不可ですが、Postgresなら可能）
+  const client = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+  const pg = client.rpc; // 例: pgでトランザクションを使う場合
+
+  try {
+    // 1. tasks→categories の順で削除
+    const delTasks = await client.from('tasks').delete().eq('user_id', userId);
+    if (delTasks.error) throw delTasks.error;
+    const delCats = await client.from('categories').delete().eq('user_id', userId);
+    if (delCats.error) throw delCats.error;
+
+    // 2. categories を挿入
+    const cats = rawMemos.map((c: any, i: number) => ({
+      user_id: userId,
+      title: String(c?.category ?? c?.title ?? 'Untitled'),
+      sort_index: Number.isFinite(c?.sort_index) ? c.sort_index : i,
+    }));
+    const { data: insertedCats, error: catErr } = await client
+      .from('categories')
+      .insert(cats)
+      .select('id');
+    if (catErr) throw catErr;
+
+    // 3. tasks を新しい category_id で挿入
+    const taskRows = rawMemos.flatMap((c: any, i: number) => {
+      const cid = insertedCats?.[i]?.id;
+      if (!cid) return [];
+      return (Array.isArray(c.tasks) ? c.tasks : []).map((t: any) => ({
+        user_id: userId,
+        category_id: cid,
+        text: String(t?.text ?? ''),
+        done: !!t?.done,
+      }));
+    });
+
+    if (taskRows.length > 0) {
+      const { error: taskErr } = await client.from('tasks').insert(taskRows);
+      if (taskErr) throw taskErr;
+    }
+
+    return NextResponse.json({ ok: true });
+  } catch (err: any) {
+    // エラー時は詳細を返す
+    return NextResponse.json({ error: err.message || String(err) }, { status: 500 });
+  }
+}

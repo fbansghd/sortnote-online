@@ -3,7 +3,6 @@ import { v4 as uuidv4 } from "uuid";
 import { arrayMove } from "@dnd-kit/sortable";
 import { useSession } from 'next-auth/react';
 import React from 'react'; // ← React is not defined の対策（追加）
-import { createClient } from '@supabase/supabase-js';
 
 // 追加: タイトル正規化
 const normalizeTitle = (s) => (s || '').trim().toLowerCase();
@@ -370,41 +369,7 @@ export function useMemos() {
   }, [isAltColor]);
 
   // すべての状態・関数を返す
-  return {
-    text,
-    setText,
-    taskInputs,
-    setTaskInputs,
-    memos,
-    setMemos,
-    addCategory,
-    addTaskToCategory,
-    toogleTaskDone,
-    deleteTaskById,
-    deleteMemo,
-    showTaskInput,
-    setShowTaskInput,
-    toggleTaskInput,
-    isAltColor,
-    setIsAltColor,
-    activeTask,
-    setActiveTask,
-    activeCategory,
-    setActiveCategory,
-    handleDragStart,
-    handleDragEnd,
-    handleDragCancel,
-    collapsedCategories,
-    setCollapsedCategories,
-    toggleCategoryCollapse,
-    showSidebar,
-    setShowSidebar,
-    isMobile,
-    setIsMobile,
-    mobileCategoryIndex,
-    setMobileCategoryIndex,
-    handlePrevCategory,
-    handleNextCategory,
+  
     // Server sync helpers (POST/GET to /api/notes)
     async saveMemosToServer() {
       try {
