@@ -59,7 +59,8 @@ export async function GET() {
   return NextResponse.json({ ok: true, memos: composed, collapsedTitles })
 }
 
-// POST: idベースでUPDATE/INSERT/DELETEする
+// POST: accept a payload { memos: [{ id?, category, tasks:[{id?, text, done}] , sort_index? }] }
+// and replace the user's categories/tasks with the provided structure in a transaction
 export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions);
   const userId = session?.user?.id ?? session?.user?.email ?? null;
@@ -133,16 +134,14 @@ export async function POST(request: NextRequest) {
 }
 
 type TaskPayload = {
+  id?: string;
   text: string;
   done: boolean;
 };
 
 type CategoryPayload = {
+  id?: string;
   category: string;
   sort_index?: number;
   tasks: TaskPayload[];
-};
-
-type MemosPayload = {
-  memos: CategoryPayload[];
 };
