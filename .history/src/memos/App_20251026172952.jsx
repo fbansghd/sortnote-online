@@ -52,16 +52,14 @@ function App() {
   useMemosSync(memos, setMemos);
   const { status } = useSession();
 
-  // サインイン直後のみ一度だけロード
-  const didInitialLoad = React.useRef(false);
-  React.useEffect(() => {
-    if (status === 'authenticated' && !didInitialLoad.current) {
-      didInitialLoad.current = true;
-      loadMemosFromServer().then(() => {
-        console.log('[load] loaded memos from server');
-      });
-    }
-  }, [status, loadMemosFromServer]);
+  // サインイン直後に一度だけ即時保存（自動保存のデバウンス待ちを回避）
+  // React.useEffect(() => {
+  //   if (status === 'authenticated') {
+  //     saveMemosToServer().then(() => {
+  //       console.log('[save] pushed current memos to server');
+  //     });
+  //   }
+  // }, [status, saveMemosToServer]);
 
   // DnD Kitのセンサー設定（マウス・タッチ対応）
   const sensors = useSensors(

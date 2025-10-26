@@ -52,16 +52,6 @@ function App() {
   useMemosSync(memos, setMemos);
   const { status } = useSession();
 
-  // サインイン直後のみ一度だけロード
-  const didInitialLoad = React.useRef(false);
-  React.useEffect(() => {
-    if (status === 'authenticated' && !didInitialLoad.current) {
-      didInitialLoad.current = true;
-      loadMemosFromServer().then(() => {
-        console.log('[load] loaded memos from server');
-      });
-    }
-  }, [status, loadMemosFromServer]);
 
   // DnD Kitのセンサー設定（マウス・タッチ対応）
   const sensors = useSensors(
