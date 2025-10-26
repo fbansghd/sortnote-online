@@ -359,7 +359,11 @@ export function useMemosSync(memos, setMemos) {
   const didInitialLoad = React.useRef(false);
   const lastServerHash = React.useRef(null);
 
-  // 初回ロードのみ（自動保存は実行しない）
+  const hash = React.useCallback((v) => {
+    try { return JSON.stringify(v); } catch { return String(Math.random()); }
+  }, []);
+
+  // 初回ロード：サーバー優先（localStorage不使用）
   React.useEffect(() => {
     if (status !== 'authenticated' || didInitialLoad.current) return;
     didInitialLoad.current = true;
@@ -389,6 +393,44 @@ export function useMemosSync(memos, setMemos) {
     })();
   }, [status, setMemos]);
 
-  // 自動保存の副作用を削除
-  // （何も書かないことで自動POSTは発生しません）
+  // 自動保存：空でも送る
+  React.useEffect(() => {
+    if (status !== 'authenticated') return;
+    if (!Array.isArray(memos)) return;
+
+    const cleaned = memos.map((c, i) => ({
+      id: c.id,
+      category: c.category,
+      sort_index: i,
+      tasks: (Array.isArray(c.tasks) ? c.tasks : []).map(t => ({
+        id: t.id,
+        text: t.text ?? '',
+        done: !!t.done,
+      })),
+    }));
+
+    const outgoing = { memos: cleaned };
+    const outgoingHash = JSON.stringify(outgoing);
+    if (outgoingHash === lastServerHash.current) return;
+
+    const t = setTimeout(async () => {
+      try {
+        const res = await fetch('/api/notes', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(outgoing),
+        });
+        const data = await res.json().catch(() => null);
+        if (res.ok) {
+          lastServerHash.current = outgoingHash;
+        } else {
+          console.error('[sync] save failed:', res.status, data);
+        }
+      } catch (e) {
+        console.error('[sync] save error:', e);
+      }
+    }, 500); // ← 0.5秒ごとにPOST
+
+    return () => clearTimeout(t);
+  }, [status, memos]);
 }

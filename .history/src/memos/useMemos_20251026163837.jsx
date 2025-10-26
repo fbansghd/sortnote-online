@@ -258,8 +258,12 @@ export function useMemos() {
   // テーマカラー切り替え状態（ローカル保存付き→ローカルストレージ削除）
   const [isAltColor, setIsAltColor] = useState(false);
 
+  // 手動保存直後は自動保存を一時停止するためのタイムスタンプ
+  const [lastManualSave, setLastManualSave] = useState(Date.now());
+
   // Server sync helpers (POST/GET to /api/notes)
   const saveMemosToServer = async () => {
+    setLastManualSave(Date.now()); // 手動保存のタイミングを記録
     try {
       const cleaned = memos.map((c, i) => ({
         id: c.id,
@@ -354,12 +358,16 @@ export function useMemos() {
 
 // Note: side effects (auto-load and auto-save) cannot be triggered inside the hook return,
 // so we create a wrapper hook that uses the session and memos state to trigger save/load.
-export function useMemosSync(memos, setMemos) {
+export function useMemosSync(memos, setMemos, lastManualSave) {
   const { status } = useSession();
   const didInitialLoad = React.useRef(false);
   const lastServerHash = React.useRef(null);
 
-  // 初回ロードのみ（自動保存は実行しない）
+  const hash = React.useCallback((v) => {
+    try { return JSON.stringify(v); } catch { return String(Math.random()); }
+  }, []);
+
+  // 初回ロード：サーバー優先（localStorage不使用）
   React.useEffect(() => {
     if (status !== 'authenticated' || didInitialLoad.current) return;
     didInitialLoad.current = true;
@@ -389,6 +397,50 @@ export function useMemosSync(memos, setMemos) {
     })();
   }, [status, setMemos]);
 
-  // 自動保存の副作用を削除
-  // （何も書かないことで自動POSTは発生しません）
+  // 自動保存：手動保存直後は一定時間スキップ
+  React.useEffect(() => {
+    if (status !== 'authenticated') return;
+    if (!Array.isArray(memos)) return;
+
+    // 手動保存から1.5秒以内は自動保存をスキップ
+    if (Date.now() - lastManualSave < 1500) return;
+
+    const cleaned = memos.map((c, i) => ({
+      id: c.id,
+      category: c.category,
+      sort_index: i,
+      tasks: (Array.isArray(c.tasks) ? c.tasks : []).map(t => ({
+        id: t.id,
+        text: t.text ?? '',
+        done: !!t.done,
+      })),
+    }));
+
+    const outgoing = { memos: cleaned };
+    const outgoingHash = JSON.stringify(outgoing);
+    if (outgoingHash === lastServerHash.current) return;
+
+    const t = setTimeout(async () => {
+      try {
+        const res = await fetch('/api/notes', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(outgoing),
+        });
+        const data = await res.json().catch(() => null);
+        if (res.ok) {
+          lastServerHash.current = outgoingHash;
+        } else {
+          console.error('[sync] save failed:', res.status, data);
+        }
+      } catch (e) {
+        console.error('[sync] save error:', e);
+      }
+    }, 1000);
+
+    return () => clearTimeout(t);
+  }, [status, memos, lastManualSave]);
 }
+
+// App.jsx での呼び出し例
+// useMemosSync(memos, setMemos, lastManualSave);

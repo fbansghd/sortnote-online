@@ -140,10 +140,12 @@ export function useMemos() {
   };
 
   const deleteCategory = (catIdx) => {
-    setMemos((memos) => {
-      const removedCategory = memos[catIdx];
-      if (!removedCategory) return memos;
-      return memos.filter((cat, i) => i !== catIdx);
+    setMemos((prev) => {
+      const idx = prev.findIndex((cat) => cat.id === prev[catIdx]?.id);
+      if (idx === -1) return prev;
+      const next = [...prev];
+      next.splice(idx, 1);
+      return next;
     });
     setTaskInputs((inputs) => inputs.filter((_, i) => i !== catIdx));
     saveMemosToServer();
@@ -259,7 +261,10 @@ export function useMemos() {
   const [isAltColor, setIsAltColor] = useState(false);
 
   // Server sync helpers (POST/GET to /api/notes)
+  const [lastManualSave, setLastManualSave] = useState(Date.now());
+
   const saveMemosToServer = async () => {
+    setLastManualSave(Date.now());
     try {
       const cleaned = memos.map((c, i) => ({
         id: c.id,
@@ -312,6 +317,51 @@ export function useMemos() {
     }
   };
 
+  const didInitialLoad = React.useRef(false);
+  const lastServerHash = React.useRef(null);
+
+  const hash = React.useCallback((v) => {
+    try { return JSON.stringify(v); } catch { return String(Math.random()); }
+  }, []);
+
+  // 初回ロード：サーバー優先（localStorage不使用）
+  React.useEffect(() => {
+    if (status !== 'authenticated' || didInitialLoad.current) return;
+    didInitialLoad.current = true;
+    (async () => {
+      try {
+        const res = await fetch('/api/notes', { cache: 'no-store' });
+        if (!res.ok) return;
+        const data = await res.json();
+        const serverMemos = Array.isArray(data?.memos) ? data.memos : null;
+        if (serverMemos) {
+          setMemos(serverMemos);
+          // localStorage.setItem('memos', JSON.stringify(serverMemos)); // ←削除
+        }
+      } catch (err) {
+        console.error('初回ロードに失敗しました:', err);
+      }
+    })();
+  }, [status]);
+
+  // メモの自動保存（手動保存から1500ms以上経過している場合のみ）
+  React.useEffect(() => {
+    if (Date.now() - lastManualSave < 1500) return; // 手動保存直後はスキップ
+    if (status !== 'authenticated') return;
+    const hashString = hash(memos);
+    if (hashString === lastServerHash.current) return;
+    lastServerHash.current = hashString;
+    const save = async () => {
+      try {
+        await saveMemosToServer();
+      } catch (err) {
+        console.error('自動保存に失敗しました:', err);
+      }
+    };
+    const timeoutId = setTimeout(save, 2000);
+    return () => clearTimeout(timeoutId);
+  }, [status, memos, lastManualSave]);
+
   return {
     text,
     setText,
@@ -359,7 +409,11 @@ export function useMemosSync(memos, setMemos) {
   const didInitialLoad = React.useRef(false);
   const lastServerHash = React.useRef(null);
 
-  // 初回ロードのみ（自動保存は実行しない）
+  const hash = React.useCallback((v) => {
+    try { return JSON.stringify(v); } catch { return String(Math.random()); }
+  }, []);
+
+  // 初回ロード：サーバー優先（localStorage不使用）
   React.useEffect(() => {
     if (status !== 'authenticated' || didInitialLoad.current) return;
     didInitialLoad.current = true;
@@ -371,24 +425,62 @@ export function useMemosSync(memos, setMemos) {
         const serverMemos = Array.isArray(data?.memos) ? data.memos : null;
         if (serverMemos) {
           setMemos(serverMemos);
-          const cleaned = serverMemos.map((c, i) => ({
-            id: c.id,
-            category: c.category,
-            sort_index: i,
-            tasks: (Array.isArray(c.tasks) ? c.tasks : []).map(t => ({
-              id: t.id,
-              text: t.text ?? '',
-              done: !!t.done,
-            })),
-          }));
-          lastServerHash.current = JSON.stringify({ memos: cleaned });
+          // localStorage.setItem('memos', JSON.stringify(serverMemos)); // ←削除
         }
-      } catch (e) {
-        console.error('[sync] initial load failed:', e);
+      } catch (err) {
+        console.error('初回ロードに失敗しました:', err);
       }
     })();
-  }, [status, setMemos]);
+  }, [status]);
 
-  // 自動保存の副作用を削除
-  // （何も書かないことで自動POSTは発生しません）
+  const [lastManualSave, setLastManualSave] = useState(Date.now());
+
+  const saveMemosToServer = async () => {
+    setLastManualSave(Date.now());
+    try {
+      const cleaned = memos.map((c, i) => ({
+        id: c.id,
+        category: c.category,
+        sort_index: i,
+        tasks: (Array.isArray(c.tasks) ? c.tasks : []).map(t => ({
+          id: t.id,
+          text: t.text ?? '',
+          done: !!t.done,
+        })),
+      }));
+
+      if (cleaned.length === 0) return { ok: true, skipped: true };
+
+      const res = await fetch('/api/notes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ memos: cleaned }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.error || 'Save failed');
+      return { ok: true };
+    } catch (err) {
+      console.error('Save failed:', err);
+      return { ok: false, error: String(err) };
+    }
+  };
+
+  React.useEffect(() => {
+    if (Date.now() - lastManualSave < 1500) return; // 手動保存直後はスキップ
+    if (status !== 'authenticated') return;
+    const hashString = hash(memos);
+    if (hashString === lastServerHash.current) return;
+    lastServerHash.current = hashString;
+    const save = async () => {
+      try {
+        await saveMemosToServer();
+      } catch (err) {
+        console.error('自動保存に失敗しました:', err);
+      }
+    };
+    const timeoutId = setTimeout(save, 2000);
+    return () => clearTimeout(timeoutId);
+  }, [status, memos, lastManualSave]);
+
+  return null;
 }

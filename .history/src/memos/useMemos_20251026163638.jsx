@@ -140,10 +140,12 @@ export function useMemos() {
   };
 
   const deleteCategory = (catIdx) => {
-    setMemos((memos) => {
-      const removedCategory = memos[catIdx];
-      if (!removedCategory) return memos;
-      return memos.filter((cat, i) => i !== catIdx);
+    setMemos((prev) => {
+      const idx = prev.findIndex((cat) => cat.id === prev[catIdx]?.id);
+      if (idx === -1) return prev;
+      const next = [...prev];
+      next.splice(idx, 1);
+      return next;
     });
     setTaskInputs((inputs) => inputs.filter((_, i) => i !== catIdx));
     saveMemosToServer();
@@ -359,7 +361,11 @@ export function useMemosSync(memos, setMemos) {
   const didInitialLoad = React.useRef(false);
   const lastServerHash = React.useRef(null);
 
-  // 初回ロードのみ（自動保存は実行しない）
+  const hash = React.useCallback((v) => {
+    try { return JSON.stringify(v); } catch { return String(Math.random()); }
+  }, []);
+
+  // 初回ロード：サーバー優先（localStorage不使用）
   React.useEffect(() => {
     if (status !== 'authenticated' || didInitialLoad.current) return;
     didInitialLoad.current = true;
@@ -369,26 +375,4 @@ export function useMemosSync(memos, setMemos) {
         if (!res.ok) return;
         const data = await res.json();
         const serverMemos = Array.isArray(data?.memos) ? data.memos : null;
-        if (serverMemos) {
-          setMemos(serverMemos);
-          const cleaned = serverMemos.map((c, i) => ({
-            id: c.id,
-            category: c.category,
-            sort_index: i,
-            tasks: (Array.isArray(c.tasks) ? c.tasks : []).map(t => ({
-              id: t.id,
-              text: t.text ?? '',
-              done: !!t.done,
-            })),
-          }));
-          lastServerHash.current = JSON.stringify({ memos: cleaned });
-        }
-      } catch (e) {
-        console.error('[sync] initial load failed:', e);
-      }
-    })();
-  }, [status, setMemos]);
-
-  // 自動保存の副作用を削除
-  // （何も書かないことで自動POSTは発生しません）
-}
+        if

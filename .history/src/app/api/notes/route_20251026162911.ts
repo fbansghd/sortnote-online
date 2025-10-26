@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
     .eq('user_id', userId);
 
   const existingCatIds = new Set((existingCats ?? []).map(c => c.id));
-  const incomingCatIds = new Set((rawMemos as CategoryPayload[]).map(c => c.id).filter(Boolean));
+  const incomingCatIds = new Set(rawMemos.map((c: any) => c.id).filter(Boolean));
 
   const { data: existingTasks } = await supabaseAdmin
     .from('tasks')
@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
   }
 
   // カテゴリーごとにUPDATE/INSERT
-  for (const [i, c] of (rawMemos as CategoryPayload[]).entries()) {
+  for (const [i, c] of rawMemos.entries()) {
     let categoryId = c.id;
     if (categoryId && existingCatIds.has(categoryId)) {
       // UPDATE category
@@ -127,8 +127,8 @@ export async function POST(request: NextRequest) {
     }
 
     // タスクIDリスト
-    const incomingTasks = Array.isArray(c.tasks) ? c.tasks as TaskPayload[] : [];
-    const incomingTaskIds = new Set(incomingTasks.map(t => t.id).filter(Boolean));
+    const incomingTasks = Array.isArray(c.tasks) ? c.tasks : [];
+    const incomingTaskIds = new Set(incomingTasks.map((t: any) => t.id).filter(Boolean));
     const existingTasksInCat = (existingTasks ?? []).filter(t => t.category_id === categoryId);
     const existingTaskIdsInCat = new Set(existingTasksInCat.map(t => t.id));
 
@@ -160,16 +160,3 @@ export async function POST(request: NextRequest) {
 
   return NextResponse.json({ ok: true });
 }
-
-type TaskPayload = {
-  id?: string;
-  text: string;
-  done: boolean;
-};
-
-type CategoryPayload = {
-  id?: string;
-  category: string;
-  sort_index?: number;
-  tasks: TaskPayload[];
-};
