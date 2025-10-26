@@ -66,14 +66,14 @@ export async function POST(request: NextRequest) {
   const userId = session?.user?.id ?? session?.user?.email ?? null;
   if (!session || !userId) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
 
-  let body: MemosPayload;
+  let body: unknown;
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: 'Empty or invalid JSON body' }, { status: 400 });
   }
 
-  const rawMemos = body?.memos;
+  const rawMemos = (body as any)?.memos;
   if (!Array.isArray(rawMemos)) return NextResponse.json({ error: 'Invalid payload' }, { status: 400 });
 
   // 1. 既存データ取得
@@ -153,21 +153,3 @@ export async function POST(request: NextRequest) {
 
   return NextResponse.json({ ok: true });
 }
-
-// 型定義例
-type TaskPayload = {
-  id?: string;
-  text: string;
-  done: boolean;
-};
-
-type CategoryPayload = {
-  id?: string;
-  category: string;
-  sort_index?: number;
-  tasks: TaskPayload[];
-};
-
-type MemosPayload = {
-  memos: CategoryPayload[];
-};

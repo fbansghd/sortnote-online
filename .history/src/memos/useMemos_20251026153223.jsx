@@ -379,19 +379,19 @@ export function useMemos() {
   
 
   // Server sync helpers (POST/GET to /api/notes)
-  // saveMemosToServer: idも送る
   const saveMemosToServer = async () => {
     try {
       const cleaned = (Array.isArray(memos) ? memos : []).map((c, i) => ({
-        id: c.id, // ← 追加
+        // 重複排除しない。IDは送らない。
         category: c.category,
         sort_index: i,
         tasks: (Array.isArray(c.tasks) ? c.tasks : []).map(t => ({
-          id: t.id, // ← 追加
           text: t.text ?? '',
           done: !!t.done,
         })),
       }));
+
+      if (cleaned.length === 0) return { ok: true, skipped: true };
 
       const res = await fetch('/api/notes', {
         method: 'POST',
@@ -474,83 +474,83 @@ export function useMemos() {
 
 // Note: side effects (auto-load and auto-save) cannot be triggered inside the hook return,
 // so we create a wrapper hook that uses the session and memos state to trigger save/load.
-export function useMemosSync(memos, setMemos) {
-  const { status } = useSession();
-  const didInitialLoad = React.useRef(false);
-  const lastServerHash = React.useRef(null);
+// export function useMemosSync(memos, setMemos) {
+//   const { status } = useSession();
+//   const didInitialLoad = React.useRef(false);
+//   const lastServerHash = React.useRef(null);
 
-  const hash = React.useCallback((v) => {
-    try { return JSON.stringify(v); } catch { return String(Math.random()); }
-  }, []);
+//   const hash = React.useCallback((v) => {
+//     try { return JSON.stringify(v); } catch { return String(Math.random()); }
+//   }, []);
 
-  // 初回ロード：サーバー優先（localStorage不使用）
-  React.useEffect(() => {
-    if (status !== 'authenticated' || didInitialLoad.current) return;
-    didInitialLoad.current = true;
-    (async () => {
-      try {
-        const res = await fetch('/api/notes', { cache: 'no-store' });
-        if (!res.ok) return;
-        const data = await res.json();
-        const serverMemos = Array.isArray(data?.memos) ? data.memos : null;
-        if (serverMemos) {
-          setMemos(serverMemos);
-          // 送信用ハッシュはクリーンペイロードで管理
-          const cleaned = serverMemos.map((c, i) => ({
-            category: c.category,
-            sort_index: i,
-            tasks: (Array.isArray(c.tasks) ? c.tasks : []).map(t => ({
-              text: t.text ?? '',
-              done: !!t.done,
-            })),
-          }));
-          lastServerHash.current = JSON.stringify({ memos: cleaned });
-        }
-      } catch (e) {
-        console.error('[sync] initial load failed:', e);
-      }
-    })();
-  }, [status, setMemos]);
+//   // 初回ロード：サーバー優先（localStorage不使用）
+//   React.useEffect(() => {
+//     if (status !== 'authenticated' || didInitialLoad.current) return;
+//     didInitialLoad.current = true;
+//     (async () => {
+//       try {
+//         const res = await fetch('/api/notes', { cache: 'no-store' });
+//         if (!res.ok) return;
+//         const data = await res.json();
+//         const serverMemos = Array.isArray(data?.memos) ? data.memos : null;
+//         if (serverMemos) {
+//           setMemos(serverMemos);
+//           // 送信用ハッシュはクリーンペイロードで管理
+//           const cleaned = serverMemos.map((c, i) => ({
+//             category: c.category,
+//             sort_index: i,
+//             tasks: (Array.isArray(c.tasks) ? c.tasks : []).map(t => ({
+//               text: t.text ?? '',
+//               done: !!t.done,
+//             })),
+//           }));
+//           lastServerHash.current = JSON.stringify({ memos: cleaned });
+//         }
+//       } catch (e) {
+//         console.error('[sync] initial load failed:', e);
+//       }
+//     })();
+//   }, [status, setMemos]);
 
-  // 自動保存：空でも送る
-  React.useEffect(() => {
-    if (status !== 'authenticated') return;
-    if (!Array.isArray(memos)) return;
+//   // 自動保存：空でも送る
+//   React.useEffect(() => {
+//     if (status !== 'authenticated') return;
+//     if (!Array.isArray(memos)) return;
 
-    const cleaned = memos.map((c, i) => ({
-      category: c.category,
-      sort_index: i,
-      tasks: (Array.isArray(c.tasks) ? c.tasks : []).map(t => ({
-        text: t.text ?? '',
-        done: !!t.done,
-      })),
-    }));
+//     const cleaned = memos.map((c, i) => ({
+//       category: c.category,
+//       sort_index: i,
+//       tasks: (Array.isArray(c.tasks) ? c.tasks : []).map(t => ({
+//         text: t.text ?? '',
+//         done: !!t.done,
+//       })),
+//     }));
 
-    // ↓この行を削除
-    // if (cleaned.length === 0) return;
+//     // ↓この行を削除
+//     // if (cleaned.length === 0) return;
 
-    const outgoing = { memos: cleaned };
-    const outgoingHash = JSON.stringify(outgoing);
-    if (outgoingHash === lastServerHash.current) return;
+//     const outgoing = { memos: cleaned };
+//     const outgoingHash = JSON.stringify(outgoing);
+//     if (outgoingHash === lastServerHash.current) return;
 
-    const t = setTimeout(async () => {
-      try {
-        const res = await fetch('/api/notes', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(outgoing),
-        });
-        const data = await res.json().catch(() => null);
-        if (res.ok) {
-          lastServerHash.current = outgoingHash;
-        } else {
-          console.error('[sync] save failed:', res.status, data);
-        }
-      } catch (e) {
-        console.error('[sync] save error:', e);
-      }
-    }, 1200);
+//     const t = setTimeout(async () => {
+//       try {
+//         const res = await fetch('/api/notes', {
+//           method: 'POST',
+//           headers: { 'Content-Type': 'application/json' },
+//           body: JSON.stringify(outgoing),
+//         });
+//         const data = await res.json().catch(() => null);
+//         if (res.ok) {
+//           lastServerHash.current = outgoingHash;
+//         } else {
+//           console.error('[sync] save failed:', res.status, data);
+//         }
+//       } catch (e) {
+//         console.error('[sync] save error:', e);
+//       }
+//     }, 1200);
 
-    return () => clearTimeout(t);
-  }, [status, memos]);
-}
+//     return () => clearTimeout(t);
+//   }, [status, memos]);
+// }
