@@ -379,7 +379,11 @@ export function useMemos() {
     addCategory,
     addTaskToCategory,
     toogleTaskDone,
+<<<<<<< HEAD
     deleteTaskById,
+=======
+    deleteTask,
+>>>>>>> ede41ae08dbd6cc9d96c00a8de19a3b18e1c924b
     deleteMemo,
     showTaskInput,
     setShowTaskInput,

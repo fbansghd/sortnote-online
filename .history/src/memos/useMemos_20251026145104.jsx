@@ -194,6 +194,8 @@ export function useMemos() {
       }
     });
   };
+
+<<<<<<< HEAD
   // Task delete by IDs (safer than index-based)
   const deleteTaskById = (categoryId, taskId) => {
     setMemos((prev) => {
@@ -379,7 +381,11 @@ export function useMemos() {
     addCategory,
     addTaskToCategory,
     toogleTaskDone,
+<<<<<<< HEAD
     deleteTaskById,
+=======
+    deleteTask,
+>>>>>>> ede41ae08dbd6cc9d96c00a8de19a3b18e1c924b
     deleteMemo,
     showTaskInput,
     setShowTaskInput,
