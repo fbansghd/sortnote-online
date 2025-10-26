@@ -379,19 +379,19 @@ export function useMemos() {
   
 
   // Server sync helpers (POST/GET to /api/notes)
-  // saveMemosToServer: idも送る
   const saveMemosToServer = async () => {
     try {
       const cleaned = (Array.isArray(memos) ? memos : []).map((c, i) => ({
-        id: c.id, // ← 追加
+        // 重複排除しない。IDは送らない。
         category: c.category,
         sort_index: i,
         tasks: (Array.isArray(c.tasks) ? c.tasks : []).map(t => ({
-          id: t.id, // ← 追加
           text: t.text ?? '',
           done: !!t.done,
         })),
       }));
+
+      if (cleaned.length === 0) return { ok: true, skipped: true };
 
       const res = await fetch('/api/notes', {
         method: 'POST',
@@ -526,9 +526,6 @@ export function useMemosSync(memos, setMemos) {
       })),
     }));
 
-    // ↓この行を削除
-    // if (cleaned.length === 0) return;
-
     const outgoing = { memos: cleaned };
     const outgoingHash = JSON.stringify(outgoing);
     if (outgoingHash === lastServerHash.current) return;
@@ -549,7 +546,7 @@ export function useMemosSync(memos, setMemos) {
       } catch (e) {
         console.error('[sync] save error:', e);
       }
-    }, 1200);
+    }, 10000); // ← 10秒間隔
 
     return () => clearTimeout(t);
   }, [status, memos]);

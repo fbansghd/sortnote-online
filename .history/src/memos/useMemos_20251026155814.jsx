@@ -84,9 +84,9 @@ export function useMemos() {
   // カテゴリー追加
   const addCategory = () => {
     if (!text) return;
-    // 重複チェック
     const trimmedText = text.trim();
-    const isDuplicate = memos.some(memo => memo.category === trimmedText);
+    const normalized = normalizeTitle(trimmedText);
+    const isDuplicate = memos.some(memo => normalizeTitle(memo.category) === normalized);
     if (isDuplicate) {
       alert('同じ名前のカテゴリーが既に存在します');
       return;
@@ -379,19 +379,19 @@ export function useMemos() {
   
 
   // Server sync helpers (POST/GET to /api/notes)
-  // saveMemosToServer: idも送る
   const saveMemosToServer = async () => {
     try {
       const cleaned = (Array.isArray(memos) ? memos : []).map((c, i) => ({
-        id: c.id, // ← 追加
+        // 重複排除しない。IDは送らない。
         category: c.category,
         sort_index: i,
         tasks: (Array.isArray(c.tasks) ? c.tasks : []).map(t => ({
-          id: t.id, // ← 追加
           text: t.text ?? '',
           done: !!t.done,
         })),
       }));
+
+      if (cleaned.length === 0) return { ok: true, skipped: true };
 
       const res = await fetch('/api/notes', {
         method: 'POST',
