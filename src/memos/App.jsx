@@ -109,7 +109,7 @@ function App() {
             </label>
           </div>
           <div className={styles.toggleContainer}>
-            <div>Sidebar</div>
+            <div>Memobox</div>
             <label className={styles.toggleSwitch}>
               <input
                 type="checkbox"
@@ -141,7 +141,11 @@ function App() {
                 placeholder=" input category here"
                 value={text}
                 onChange={e => setText(e.target.value)}
-                onKeyDown={e => e.key === "Enter" && addCategory()}
+                onKeyDown={e => {
+                  if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+                    addCategory();
+                  }
+                }}
               />
               <button
                 className={styles.categoryAddBtn}
@@ -289,7 +293,7 @@ function App() {
                                           setTaskInputs(newInputs);
                                         }}
                                         onKeyDown={e => {
-                                          if (e.key === "Enter") {
+                                          if (e.key === "Enter" && !e.nativeEvent.isComposing) {
                                             e.preventDefault();
                                             e.stopPropagation();
                                             addTaskToCategory(realIndex, taskInputs[realIndex]); // 正しいインデックス
