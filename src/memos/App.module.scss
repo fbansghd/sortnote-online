@@ -668,6 +668,8 @@ html {
   font-family: 'Ink Free', cursive, sans-serif; /* SortNoteと同じフォント */
   font-weight: 900;
   letter-spacing: 0.04em;  /* 任意: 少し広げて強調 */
+  align-self: flex-start;
+  margin-top: 1.3rem;  /* 真ん中よりも少し高い位置に配置 */
 }
 .logoutBtn:hover {
   background: #f7f9fc;
