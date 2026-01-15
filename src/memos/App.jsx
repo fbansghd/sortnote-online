@@ -21,8 +21,6 @@ function App() {
     setTaskInputs,
     memos,
     setMemos,
-    saveMemosToServer,
-    loadMemosFromServer,
     addCategory,
     addTaskToCategory,
     toogleTaskDone,
@@ -52,17 +50,6 @@ function App() {
   // enable auto-load / auto-save behavior (uses session internally)
   useMemosSync(memos, setMemos, collapsedCategories, setCollapsedCategories);
   const { status } = useSession();
-
-  // サインイン直後のみ一度だけロード
-  const didInitialLoad = React.useRef(false);
-  React.useEffect(() => {
-    if (status === 'authenticated' && !didInitialLoad.current) {
-      didInitialLoad.current = true;
-      loadMemosFromServer().then(() => {
-        console.log('[load] loaded memos from server');
-      });
-    }
-  }, [status, loadMemosFromServer]);
 
   // DnD Kitのセンサー設定（マウス・タッチ対応）
   const sensors = useSensors(
