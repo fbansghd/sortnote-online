@@ -384,13 +384,7 @@ export function useMemos() {
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) throw new Error(data?.error || 'Save failed');
-
-      // サーバーから返された最新データでmemosを更新
-      if (data?.memos && Array.isArray(data.memos)) {
-        setMemos(data.memos);
-      }
-
-      return { ok: true, memos: data?.memos };
+      return { ok: true };
     } catch (err) {
       console.error('Save failed:', err);
       return { ok: false, error: String(err) };
@@ -529,22 +523,8 @@ export function useMemosSync(memos, setMemos) {
           body: JSON.stringify(outgoing),
         });
         const data = await res.json().catch(() => null);
-        if (res.ok && data?.memos) {
-          // サーバーから返された最新データでmemosを更新
-          setMemos(data.memos);
-          // 新しいハッシュを計算
-          const updatedCleaned = data.memos.map((c, i) => ({
-            id: c.id,
-            category: c.category,
-            sort_index: i,
-            collapsed: !!c.collapsed,
-            tasks: (Array.isArray(c.tasks) ? c.tasks : []).map(t => ({
-              id: t.id,
-              text: t.text ?? '',
-              done: !!t.done,
-            })),
-          }));
-          lastServerHash.current = JSON.stringify({ memos: updatedCleaned });
+        if (res.ok) {
+          lastServerHash.current = outgoingHash;
         } else {
           console.error('[sync] save failed:', res.status, data);
         }
@@ -554,5 +534,5 @@ export function useMemosSync(memos, setMemos) {
     }, 1200);
 
     return () => clearTimeout(t);
-  }, [status, memos, setMemos]);
+  }, [status, memos]);
 }
