@@ -517,6 +517,8 @@ export function useMemosSync(memos, setMemos, collapsedCategories, setCollapsedC
   React.useEffect(() => {
     if (status !== 'authenticated') return;
     if (!Array.isArray(memos)) return;
+    // 初回ロードが完了するまで自動保存しない
+    if (!didInitialLoad.current) return;
 
     const cleaned = memos.map((c, i) => ({
       id: c.id,
