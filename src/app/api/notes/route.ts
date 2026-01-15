@@ -59,7 +59,7 @@ export async function GET() {
   return NextResponse.json({ ok: true, memos: composed, collapsedTitles })
 }
 
-// POST: accept a payload { memos: [{ id?, category, tasks:[{id?, text, done}] , sort_index? }] }
+// POST: accept a payload { memos: [{ id?, category, tasks:[{id?, text, done}] , sort_index? }], collapsedCategories?: string[] }
 // and replace the user's categories/tasks with the provided structure in a transaction
 export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -76,6 +76,18 @@ export async function POST(request: NextRequest) {
   const rawMemos = body?.memos;
   if (!Array.isArray(rawMemos)) {
     return NextResponse.json({ error: 'Invalid payload: { memos: [] } required' }, { status: 400 });
+  }
+
+  // 折りたたみ状態を保存
+  const collapsedCategories = body?.collapsedCategories;
+  if (Array.isArray(collapsedCategories)) {
+    await supabaseAdmin.from('ui_prefs').upsert({
+      user_id: userId,
+      collapsed_titles: collapsedCategories,
+      updated_at: new Date().toISOString(),
+    }, {
+      onConflict: 'user_id'
+    });
   }
 
   // 既存カテゴリ・タスク取得
@@ -170,4 +182,5 @@ type CategoryPayload = {
 
 type MemosPayload = {
   memos: CategoryPayload[];
+  collapsedCategories?: string[];
 };

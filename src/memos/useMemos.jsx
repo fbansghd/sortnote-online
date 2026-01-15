@@ -36,16 +36,8 @@ export function useMemos() {
   // モバイル用：表示中カテゴリーのインデックス
   const [mobileCategoryIndex, setMobileCategoryIndex] = useState(0);
 
-  // 折り畳み中カテゴリーIDリスト → タイトルキーで保持
-  const [collapsedCategories, setCollapsedCategories] = useState(() => {
-    const saved = localStorage.getItem("collapsedCategories");
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  // 折り畳み状態をローカル保存
-  useEffect(() => {
-    localStorage.setItem("collapsedCategories", JSON.stringify(collapsedCategories));
-  }, [collapsedCategories]);
+  // 折り畳み中カテゴリーIDリスト → タイトルキーで保持（DBから取得）
+  const [collapsedCategories, setCollapsedCategories] = useState([]);
 
   // カテゴリーの折り畳み/展開切り替え（idではなくタイトルで）
   const toggleCategoryCollapse = (categoryKey) => {
@@ -396,7 +388,10 @@ export function useMemos() {
       const res = await fetch('/api/notes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ memos: cleaned }),
+        body: JSON.stringify({
+          memos: cleaned,
+          collapsedCategories: collapsedCategories
+        }),
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) throw new Error(data?.error || 'Save failed');
@@ -416,12 +411,10 @@ export function useMemos() {
       const serverMemos = data?.memos;
       if (Array.isArray(serverMemos)) {
         setMemos(serverMemos);
-        localStorage.setItem('memos', JSON.stringify(serverMemos));
       }
 
       if (Array.isArray(data?.collapsedTitles)) {
-        setCollapsedCategories(data.collapsedTitles); // サーバー状態を採用
-        localStorage.setItem('collapsedCategories', JSON.stringify(data.collapsedTitles));
+        setCollapsedCategories(data.collapsedTitles);
       }
 
       return { ok: true, memos: serverMemos };
@@ -474,7 +467,7 @@ export function useMemos() {
 
 // Note: side effects (auto-load and auto-save) cannot be triggered inside the hook return,
 // so we create a wrapper hook that uses the session and memos state to trigger save/load.
-export function useMemosSync(memos, setMemos) {
+export function useMemosSync(memos, setMemos, collapsedCategories, setCollapsedCategories) {
   const { status } = useSession();
   const didInitialLoad = React.useRef(false);
   const lastServerHash = React.useRef(null);
@@ -504,13 +497,21 @@ export function useMemosSync(memos, setMemos) {
               done: !!t.done,
             })),
           }));
-          lastServerHash.current = JSON.stringify({ memos: cleaned });
+
+          // 折りたたみ状態も読み込む
+          const serverCollapsed = Array.isArray(data?.collapsedTitles) ? data.collapsedTitles : [];
+          setCollapsedCategories(serverCollapsed);
+
+          lastServerHash.current = JSON.stringify({
+            memos: cleaned,
+            collapsedCategories: serverCollapsed
+          });
         }
       } catch (e) {
         console.error('[sync] initial load failed:', e);
       }
     })();
-  }, [status, setMemos]);
+  }, [status, setMemos, setCollapsedCategories]);
 
   // 自動保存：空でも送る
   React.useEffect(() => {
@@ -518,20 +519,20 @@ export function useMemosSync(memos, setMemos) {
     if (!Array.isArray(memos)) return;
 
     const cleaned = memos.map((c, i) => ({
-      id: c.id, // ←追加
+      id: c.id,
       category: c.category,
       sort_index: i,
       tasks: (Array.isArray(c.tasks) ? c.tasks : []).map(t => ({
-        id: t.id, // ←追加
+        id: t.id,
         text: t.text ?? '',
         done: !!t.done,
       })),
     }));
 
-    // ↓この行を削除
-    // if (cleaned.length === 0) return;
-
-    const outgoing = { memos: cleaned };
+    const outgoing = {
+      memos: cleaned,
+      collapsedCategories: collapsedCategories
+    };
     const outgoingHash = JSON.stringify(outgoing);
     if (outgoingHash === lastServerHash.current) return;
 
@@ -554,5 +555,5 @@ export function useMemosSync(memos, setMemos) {
     }, 1200);
 
     return () => clearTimeout(t);
-  }, [status, memos]);
+  }, [status, memos, collapsedCategories]);
 }

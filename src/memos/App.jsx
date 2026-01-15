@@ -49,7 +49,7 @@ function App() {
   } = useMemos();
 
   // enable auto-load / auto-save behavior (uses session internally)
-  useMemosSync(memos, setMemos);
+  useMemosSync(memos, setMemos, collapsedCategories, setCollapsedCategories);
   const { status } = useSession();
 
   // サインイン直後のみ一度だけロード
