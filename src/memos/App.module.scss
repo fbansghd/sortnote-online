@@ -670,6 +670,8 @@ html {
   letter-spacing: 0.04em;  /* 任意: 少し広げて強調 */
   align-self: flex-start;
   margin-top: 1.3rem;  /* 真ん中よりも少し高い位置に配置 */
+  margin-left: auto;  /* 右端に配置 */
+  margin-right: 1rem;  /* 右端から少し余白 */
 }
 .logoutBtn:hover {
   background: #f7f9fc;
