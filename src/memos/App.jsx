@@ -38,6 +38,7 @@ function App() {
     handleDragEnd,
     handleDragCancel,
     collapsedCategories,
+    setCollapsedCategories,
     toggleCategoryCollapse,
     showSidebar,
     setShowSidebar,
