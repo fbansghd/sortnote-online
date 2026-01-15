@@ -232,11 +232,11 @@ html {
         .taskItem {
           display: flex;
           justify-content: space-between;
-          align-items: flex-start;
+          align-items: center;
           background: var(--task-bg);
           margin-bottom: 2px;
           margin-left: 0.5rem;
-          padding: 6px;
+          padding: 8px 6px;
           border-radius: 4px;
           width: 19rem;
           min-height: 40px;
@@ -250,6 +250,7 @@ html {
             overflow-wrap: break-word;
             word-break: break-all;
             padding-right: 0.5em;
+            line-height: 1.4;
             display: -webkit-box;
             -webkit-line-clamp: 3;
             -webkit-box-orient: vertical;
