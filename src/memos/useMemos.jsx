@@ -63,7 +63,7 @@ export function useMemos() {
     setMobileCategoryIndex(openIndexes[nextIdx]);
   };
 
-  // カテゴリー追加
+  // カテゴリー追加（楽観的更新なし：サーバーレスポンス後にUI更新）
   const addCategory = async () => {
     if (!text) return;
     // 重複チェック
@@ -74,15 +74,14 @@ export function useMemos() {
       return;
     }
 
-    // サーバーIDなしで追加
+    // 新しいデータを作成（まだUIには反映しない）
     const newMemos = [...memos, { id: undefined, category: trimmedText, tasks: [], collapsed: false }];
-    setMemos(newMemos);
     setText("");
     setTaskInputs([...taskInputs, ""]);
 
-    // 即座に保存してIDを同期
+    // サーバーに保存してレスポンス後にUI更新
     try {
-      const result = await saveMemosToServer();
+      const result = await saveMemosToServer(newMemos);
       if (result?.memos) {
         setMemos(result.memos);
       }
@@ -96,80 +95,67 @@ export function useMemos() {
     return tasks.slice().sort((a, b) => a.done - b.done);
   };
 
-  // タスク追加
-  // タスク追加の安全性強化
+  // タスク追加（楽観的更新なし：サーバーレスポンス後にUI更新）
   const addTaskToCategory = async (catIdx, task) => {
     const trimmed = (task || '').toString().trim();
     if (!trimmed) return;
 
     console.log(`Adding task "${trimmed}" to category index ${catIdx}`); // デバッグログ
 
-    let taskAdded = false;
-    setMemos((prev) => {
-      try {
-        // インデックス範囲チェック
-        if (catIdx < 0 || catIdx >= prev.length) {
-          console.error(`Invalid category index: ${catIdx}, array length: ${prev.length}`);
-          return prev;
-        }
+    // インデックス範囲チェック
+    if (catIdx < 0 || catIdx >= memos.length) {
+      console.error(`Invalid category index: ${catIdx}, array length: ${memos.length}`);
+      return;
+    }
 
-        const newMemos = [...prev];
-        const category = newMemos[catIdx];
+    const category = memos[catIdx];
+    if (!category) {
+      console.error(`Category at index ${catIdx} is undefined`);
+      return;
+    }
 
-        if (!category) {
-          console.error(`Category at index ${catIdx} is undefined`);
-          return prev;
-        }
+    const currentTasks = category.tasks || [];
 
-        const currentTasks = category.tasks || [];
+    // 重複チェック
+    const isDuplicate = currentTasks.some(existingTask =>
+      existingTask.text === trimmed
+    );
+    if (isDuplicate) {
+      console.log('Duplicate task prevented:', trimmed);
+      return;
+    }
 
-        // 重複チェック
-        const isDuplicate = currentTasks.some(existingTask =>
-          existingTask.text === trimmed
-        );
-        if (isDuplicate) {
-          console.log('Duplicate task prevented:', trimmed);
-          return prev;
-        }
+    // 新しいデータを作成（まだUIには反映しない）
+    const newTask = {
+      id: undefined, // サーバーが生成する
+      text: trimmed,
+      done: false,
+      createdAt: new Date().toISOString()
+    };
 
-        const newTask = {
-          id: undefined, // サーバーが生成する
-          text: trimmed,
-          done: false,
-          createdAt: new Date().toISOString()
-        };
+    const newMemos = [...memos];
+    const tasks = [...currentTasks, newTask];
+    newMemos[catIdx] = {
+      ...category,
+      tasks: sortTasks(tasks),
+      updatedAt: new Date().toISOString()
+    };
 
-        const tasks = [...currentTasks, newTask];
-        newMemos[catIdx] = {
-          ...category,
-          tasks: sortTasks(tasks),
-          updatedAt: new Date().toISOString()
-        };
-
-        console.log(`Task added successfully to "${category.category}"`); // デバッグログ
-        taskAdded = true;
-        return newMemos;
-      } catch (error) {
-        console.error('Error adding task:', error);
-        return prev;
-      }
-    });
+    console.log(`Task added successfully to "${category.category}"`); // デバッグログ
 
     // 入力欄クリア
     const newInputs = [...taskInputs];
     newInputs[catIdx] = "";
     setTaskInputs(newInputs);
 
-    // 即座に保存してIDを同期
-    if (taskAdded) {
-      try {
-        const result = await saveMemosToServer();
-        if (result?.memos) {
-          setMemos(result.memos);
-        }
-      } catch (err) {
-        console.error('Failed to sync task ID:', err);
+    // サーバーに保存してレスポンス後にUI更新
+    try {
+      const result = await saveMemosToServer(newMemos);
+      if (result?.memos) {
+        setMemos(result.memos);
       }
+    } catch (err) {
+      console.error('Failed to sync task ID:', err);
     }
   };
 
@@ -389,9 +375,11 @@ export function useMemos() {
 
   // Server sync helpers (POST/GET to /api/notes)
   // saveMemosToServer: idとcollapsedも送る
-  const saveMemosToServer = async () => {
+  // dataToSave引数がある場合はそれを使用、なければ現在のmemosを使用
+  const saveMemosToServer = async (dataToSave = null) => {
     try {
-      const cleaned = (Array.isArray(memos) ? memos : []).map((c, i) => ({
+      const sourceData = dataToSave ?? memos;
+      const cleaned = (Array.isArray(sourceData) ? sourceData : []).map((c, i) => ({
         id: c.id,
         category: c.category,
         sort_index: i,
