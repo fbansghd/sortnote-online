@@ -64,7 +64,7 @@ export function useMemos() {
   };
 
   // カテゴリー追加
-  const addCategory = () => {
+  const addCategory = async () => {
     if (!text) return;
     // 重複チェック
     const trimmedText = text.trim();
@@ -74,10 +74,21 @@ export function useMemos() {
       return;
     }
 
-    // サーバーIDなしで追加（自動保存が処理する）
-    setMemos([...memos, { id: undefined, category: trimmedText, tasks: [], collapsed: false }]);
+    // サーバーIDなしで追加
+    const newMemos = [...memos, { id: undefined, category: trimmedText, tasks: [], collapsed: false }];
+    setMemos(newMemos);
     setText("");
     setTaskInputs([...taskInputs, ""]);
+
+    // 即座に保存してIDを同期
+    try {
+      const result = await saveMemosToServer();
+      if (result?.memos) {
+        setMemos(result.memos);
+      }
+    } catch (err) {
+      console.error('Failed to sync category ID:', err);
+    }
   };
 
   // タスク配列を未完了→完了順にソート
@@ -87,12 +98,13 @@ export function useMemos() {
 
   // タスク追加
   // タスク追加の安全性強化
-  const addTaskToCategory = (catIdx, task) => {
+  const addTaskToCategory = async (catIdx, task) => {
     const trimmed = (task || '').toString().trim();
     if (!trimmed) return;
 
     console.log(`Adding task "${trimmed}" to category index ${catIdx}`); // デバッグログ
 
+    let taskAdded = false;
     setMemos((prev) => {
       try {
         // インデックス範囲チェック
@@ -103,16 +115,16 @@ export function useMemos() {
 
         const newMemos = [...prev];
         const category = newMemos[catIdx];
-        
+
         if (!category) {
           console.error(`Category at index ${catIdx} is undefined`);
           return prev;
         }
 
         const currentTasks = category.tasks || [];
-        
+
         // 重複チェック
-        const isDuplicate = currentTasks.some(existingTask => 
+        const isDuplicate = currentTasks.some(existingTask =>
           existingTask.text === trimmed
         );
         if (isDuplicate) {
@@ -126,15 +138,16 @@ export function useMemos() {
           done: false,
           createdAt: new Date().toISOString()
         };
-        
+
         const tasks = [...currentTasks, newTask];
-        newMemos[catIdx] = { 
-          ...category, 
+        newMemos[catIdx] = {
+          ...category,
           tasks: sortTasks(tasks),
           updatedAt: new Date().toISOString()
         };
-        
+
         console.log(`Task added successfully to "${category.category}"`); // デバッグログ
+        taskAdded = true;
         return newMemos;
       } catch (error) {
         console.error('Error adding task:', error);
@@ -146,6 +159,18 @@ export function useMemos() {
     const newInputs = [...taskInputs];
     newInputs[catIdx] = "";
     setTaskInputs(newInputs);
+
+    // 即座に保存してIDを同期
+    if (taskAdded) {
+      try {
+        const result = await saveMemosToServer();
+        if (result?.memos) {
+          setMemos(result.memos);
+        }
+      } catch (err) {
+        console.error('Failed to sync task ID:', err);
+      }
+    }
   };
 
   // タスク完了状態の切り替え
@@ -526,28 +551,9 @@ export function useMemosSync(memos, setMemos) {
           body: JSON.stringify(outgoing),
         });
         const data = await res.json().catch(() => null);
-        if (res.ok && data?.memos) {
-          // サーバーから返された最新データでハッシュを更新
-          const serverCleaned = data.memos.map((c, i) => ({
-            id: c.id,
-            category: c.category,
-            sort_index: i,
-            collapsed: !!c.collapsed,
-            tasks: (Array.isArray(c.tasks) ? c.tasks : []).map(t => ({
-              id: t.id,
-              text: t.text ?? '',
-              done: !!t.done,
-            })),
-          }));
-          const serverHash = JSON.stringify({ memos: serverCleaned });
-
-          // サーバーのデータが現在と異なる場合のみ更新（ID同期のため）
-          if (serverHash !== outgoingHash) {
-            setMemos(data.memos);
-            lastServerHash.current = serverHash;
-          } else {
-            lastServerHash.current = outgoingHash;
-          }
+        if (res.ok) {
+          // 自動保存では絶対にsetMemosを呼ばない（無限ループ防止）
+          lastServerHash.current = outgoingHash;
         } else {
           console.error('[sync] save failed:', res.status, data);
         }
