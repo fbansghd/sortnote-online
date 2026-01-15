@@ -532,6 +532,8 @@ html {
     width: 260px;
     background: var(--main-bg);
     margin-right: 2rem;
+    margin-left: 1rem;
+    flex-shrink: 0;  /* sidebarが縮まないように */
   }
   .sidebarCategory {
     cursor: pointer;
@@ -547,8 +549,6 @@ html {
 
 .body {
   display: flex;
-  max-width: 100rem;  /* メインコンテンツの最大幅 */
-  margin: 0 auto;  /* 中央揃え */
   width: 100%;
 }
 
@@ -631,6 +631,9 @@ html {
 .mainContainer {
   display: flex;
   align-items: flex-start;
+  flex: 1;
+  max-width: 100rem;
+  margin: 0 auto;
 }
 
 .categoryContainer {
