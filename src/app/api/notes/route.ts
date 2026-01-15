@@ -144,7 +144,33 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  return NextResponse.json({ ok: true });
+  // 更新後の最新データを返す
+  const { data: updatedCats } = await supabaseAdmin
+    .from('categories')
+    .select('*')
+    .eq('user_id', userId)
+    .order('sort_index', { ascending: true });
+
+  const { data: updatedTasks } = await supabaseAdmin
+    .from('tasks')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: true });
+
+  const updatedMemos = (updatedCats ?? []).map((cat) => ({
+    id: cat.id,
+    category: cat.title,
+    sort_index: cat.sort_index,
+    collapsed: cat.collapsed ?? false,
+    tasks: (updatedTasks ?? []).filter((t) => t.category_id === cat.id).map((t) => ({
+      id: t.id,
+      text: t.text,
+      done: t.done,
+      created_at: t.created_at,
+    })),
+  }));
+
+  return NextResponse.json({ ok: true, memos: updatedMemos });
 }
 
 type TaskPayload = {
