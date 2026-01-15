@@ -92,9 +92,9 @@ export async function POST(request: NextRequest) {
   }
 
   // カテゴリーの一括UPDATE/INSERT（バッチ処理）
-  const categoriesToUpdate = [];
-  const categoriesToInsert = [];
-  const categoryIdMap = new Map(); // 一時ID → 新規カテゴリーのインデックス
+  const categoriesToUpdate: Array<{ id: string; title: string; sort_index: number; collapsed: boolean }> = [];
+  const categoriesToInsert: Array<{ user_id: string; title: string; sort_index: number; collapsed: boolean }> = [];
+  const categoryIdMap = new Map<number, number>(); // 一時ID → 新規カテゴリーのインデックス
 
   for (const [i, c] of rawMemos.entries()) {
     if (c.id && existingCatIds.has(c.id)) {
@@ -123,7 +123,7 @@ export async function POST(request: NextRequest) {
   }
 
   // カテゴリーのINSERT（一括処理）
-  let newCategoryIds = [];
+  let newCategoryIds: Array<{ id: string; sort_index: number }> = [];
   if (categoriesToInsert.length > 0) {
     const { data: insertedCats } = await supabaseAdmin
       .from('categories')
@@ -151,11 +151,13 @@ export async function POST(request: NextRequest) {
     await supabaseAdmin.from('tasks').delete().in('id', toDeleteTaskIds);
   }
 
-  const tasksToUpdate = [];
-  const tasksToInsert = [];
+  const tasksToUpdate: Array<{ id: string; text: string; done: boolean }> = [];
+  const tasksToInsert: Array<{ user_id: string; category_id: string; text: string; done: boolean }> = [];
 
   for (const c of rawMemos) {
     const categoryId = c.id;
+    if (!categoryId) continue; // IDがない場合はスキップ（新規カテゴリーのIDは既に反映済み）
+
     const incomingTasks = Array.isArray(c.tasks) ? c.tasks : [];
 
     for (const t of incomingTasks) {
