@@ -7,9 +7,6 @@ import SortableCategory from "./SortableCategory";
 import React from "react";
 import { useSession, signOut } from 'next-auth/react';
 
-// 追加: タイトル正規化（このファイル内でも使用）
-const normalizeTitle = (s) => (s || '').trim().toLowerCase();
-
 const arrowSize = 35;
 const arrowStrokeWidth = 2;
 
@@ -35,8 +32,6 @@ function App() {
     handleDragStart,
     handleDragEnd,
     handleDragCancel,
-    collapsedCategories,
-    setCollapsedCategories,
     toggleCategoryCollapse,
     showSidebar,
     setShowSidebar,
@@ -48,7 +43,7 @@ function App() {
   } = useMemos();
 
   // enable auto-load / auto-save behavior (uses session internally)
-  useMemosSync(memos, setMemos, collapsedCategories, setCollapsedCategories);
+  useMemosSync(memos, setMemos);
   const { status } = useSession();
 
   // DnD Kitのセンサー設定（マウス・タッチ対応）
@@ -67,16 +62,16 @@ function App() {
     if (!isMobile || showSidebar || memos.length === 0) return;
 
     const current = memos[mobileCategoryIndex];
-    if (current && !collapsedCategories.includes(normalizeTitle(current.category))) return;
+    if (current && !current.collapsed) return;
 
     for (let offset = 1; offset < memos.length; offset += 1) {
       const nextIdx = (mobileCategoryIndex + offset) % memos.length;
-      if (!collapsedCategories.includes(normalizeTitle(memos[nextIdx].category))) {
+      if (!memos[nextIdx].collapsed) {
         setMobileCategoryIndex(nextIdx);
         break;
       }
     }
-  }, [isMobile, showSidebar, memos, collapsedCategories, mobileCategoryIndex, setMobileCategoryIndex]);
+  }, [isMobile, showSidebar, memos, mobileCategoryIndex, setMobileCategoryIndex]);
 
   return (
     // テーマとレイアウトのコンテナ
@@ -142,14 +137,14 @@ function App() {
                 add
               </button>
             </div>
-            {/* 折り畳み中カテゴリーの一覧表示（タイトルで判定） */}
+            {/* 折り畳み中カテゴリーの一覧表示 */}
             {memos
-              .filter(cat => collapsedCategories.includes(normalizeTitle(cat.category)))
+              .filter(cat => cat.collapsed)
               .map(cat => (
                 <div
                   key={cat.id}
                   className={styles.sidebarCategory}
-                  onClick={() => toggleCategoryCollapse(cat.category)}
+                  onClick={() => toggleCategoryCollapse(cat.id)}
                 >
                   {cat.category}
                 </div>
@@ -205,8 +200,8 @@ function App() {
                 {/* 折り畳み中以外のカテゴリーを表示 */}
                 {memos
                   .map((categoryItem, realIndex) => {
-                    // 折り畳み中のカテゴリーは早期リターン（タイトルで判定）
-                    if (collapsedCategories.includes(normalizeTitle(categoryItem.category))) {
+                    // 折り畳み中のカテゴリーは早期リターン
+                    if (categoryItem.collapsed) {
                       return null;
                     }
 
@@ -229,7 +224,7 @@ function App() {
                               deleteCategory(realIndex);
                             }
                           }}
-                          onCollapse={() => toggleCategoryCollapse(categoryItem.category)}
+                          onCollapse={() => toggleCategoryCollapse(categoryItem.id)}
                         >
                           <div className={styles.categoryContainer}>
                             <div>

@@ -5,9 +5,6 @@ import { useSession } from 'next-auth/react';
 import React from 'react'; // ← React is not defined の対策（追加）
 import { createClient } from '@supabase/supabase-js';
 
-// 追加: タイトル正規化
-const normalizeTitle = (s) => (s || '').trim().toLowerCase();
-
 export function useMemos() {
   // カテゴリー追加用テキスト
   const [text, setText] = useState("");
@@ -36,23 +33,17 @@ export function useMemos() {
   // モバイル用：表示中カテゴリーのインデックス
   const [mobileCategoryIndex, setMobileCategoryIndex] = useState(0);
 
-  // 折り畳み中カテゴリーIDリスト → タイトルキーで保持（DBから取得）
-  const [collapsedCategories, setCollapsedCategories] = useState([]);
-
-  // カテゴリーの折り畳み/展開切り替え（idではなくタイトルで）
-  const toggleCategoryCollapse = (categoryKey) => {
-    const key = normalizeTitle(categoryKey);
-    setCollapsedCategories(prev =>
-      prev.includes(key)
-        ? prev.filter(k => k !== key)
-        : [...prev, key]
-    );
+  // カテゴリーの折り畳み/展開切り替え（memosのcollapsedフラグを更新）
+  const toggleCategoryCollapse = (categoryId) => {
+    setMemos(prev => prev.map(cat =>
+      cat.id === categoryId ? { ...cat, collapsed: !cat.collapsed } : cat
+    ));
   };
 
-  // 折り畳まれていないカテゴリーのインデックス一覧取得（タイトルで照合）
+  // 折り畳まれていないカテゴリーのインデックス一覧取得
   const getOpenCategoryIndexes = () =>
     memos
-      .map((cat, idx) => (!collapsedCategories.includes(normalizeTitle(cat.category)) ? idx : null))
+      .map((cat, idx) => (!cat.collapsed ? idx : null))
       .filter(idx => idx !== null);
 
   // モバイル用：前のカテゴリーへ切り替え
@@ -371,15 +362,16 @@ export function useMemos() {
   
 
   // Server sync helpers (POST/GET to /api/notes)
-  // saveMemosToServer: idも送る
+  // saveMemosToServer: idとcollapsedも送る
   const saveMemosToServer = async () => {
     try {
       const cleaned = (Array.isArray(memos) ? memos : []).map((c, i) => ({
-        id: c.id, // ←追加
+        id: c.id,
         category: c.category,
         sort_index: i,
+        collapsed: !!c.collapsed,
         tasks: (Array.isArray(c.tasks) ? c.tasks : []).map(t => ({
-          id: t.id, // ←追加
+          id: t.id,
           text: t.text ?? '',
           done: !!t.done,
         })),
@@ -388,10 +380,7 @@ export function useMemos() {
       const res = await fetch('/api/notes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          memos: cleaned,
-          collapsedCategories: collapsedCategories
-        }),
+        body: JSON.stringify({ memos: cleaned }),
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) throw new Error(data?.error || 'Save failed');
@@ -411,10 +400,6 @@ export function useMemos() {
       const serverMemos = data?.memos;
       if (Array.isArray(serverMemos)) {
         setMemos(serverMemos);
-      }
-
-      if (Array.isArray(data?.collapsedTitles)) {
-        setCollapsedCategories(data.collapsedTitles);
       }
 
       return { ok: true, memos: serverMemos };
@@ -449,8 +434,6 @@ export function useMemos() {
     handleDragStart,
     handleDragEnd,
     handleDragCancel,
-    collapsedCategories,
-    setCollapsedCategories,
     toggleCategoryCollapse,
     showSidebar,
     setShowSidebar,
@@ -467,7 +450,7 @@ export function useMemos() {
 
 // Note: side effects (auto-load and auto-save) cannot be triggered inside the hook return,
 // so we create a wrapper hook that uses the session and memos state to trigger save/load.
-export function useMemosSync(memos, setMemos, collapsedCategories, setCollapsedCategories) {
+export function useMemosSync(memos, setMemos) {
   const { status } = useSession();
   const didInitialLoad = React.useRef(false);
   const lastServerHash = React.useRef(null);
@@ -488,30 +471,26 @@ export function useMemosSync(memos, setMemos, collapsedCategories, setCollapsedC
         const serverMemos = Array.isArray(data?.memos) ? data.memos : null;
         if (serverMemos) {
           setMemos(serverMemos);
-          // 送信用ハッシュはクリーンペイロードで管理
+          // 送信用ハッシュはクリーンペイロードで管理（idとcollapsedも含める）
           const cleaned = serverMemos.map((c, i) => ({
+            id: c.id,
             category: c.category,
             sort_index: i,
+            collapsed: !!c.collapsed,
             tasks: (Array.isArray(c.tasks) ? c.tasks : []).map(t => ({
+              id: t.id,
               text: t.text ?? '',
               done: !!t.done,
             })),
           }));
 
-          // 折りたたみ状態も読み込む
-          const serverCollapsed = Array.isArray(data?.collapsedTitles) ? data.collapsedTitles : [];
-          setCollapsedCategories(serverCollapsed);
-
-          lastServerHash.current = JSON.stringify({
-            memos: cleaned,
-            collapsedCategories: serverCollapsed
-          });
+          lastServerHash.current = JSON.stringify({ memos: cleaned });
         }
       } catch (e) {
         console.error('[sync] initial load failed:', e);
       }
     })();
-  }, [status, setMemos, setCollapsedCategories]);
+  }, [status, setMemos]);
 
   // 自動保存：空でも送る
   React.useEffect(() => {
@@ -524,6 +503,7 @@ export function useMemosSync(memos, setMemos, collapsedCategories, setCollapsedC
       id: c.id,
       category: c.category,
       sort_index: i,
+      collapsed: !!c.collapsed,
       tasks: (Array.isArray(c.tasks) ? c.tasks : []).map(t => ({
         id: t.id,
         text: t.text ?? '',
@@ -531,10 +511,7 @@ export function useMemosSync(memos, setMemos, collapsedCategories, setCollapsedC
       })),
     }));
 
-    const outgoing = {
-      memos: cleaned,
-      collapsedCategories: collapsedCategories
-    };
+    const outgoing = { memos: cleaned };
     const outgoingHash = JSON.stringify(outgoing);
     if (outgoingHash === lastServerHash.current) return;
 
@@ -557,5 +534,5 @@ export function useMemosSync(memos, setMemos, collapsedCategories, setCollapsedC
     }, 1200);
 
     return () => clearTimeout(t);
-  }, [status, memos, collapsedCategories]);
+  }, [status, memos]);
 }

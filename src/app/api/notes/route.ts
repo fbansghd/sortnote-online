@@ -32,11 +32,12 @@ export async function GET() {
     return NextResponse.json({ error: taskErr.message }, { status: 500 })
   }
 
-  // Compose memos: categories with tasks array
+  // Compose memos: categories with tasks array and collapsed state
   const composed = categories.map((cat) => ({
     id: cat.id,
     category: cat.title,
     sort_index: cat.sort_index,
+    collapsed: cat.collapsed ?? false,
     tasks: tasks.filter((t) => t.category_id === cat.id).map((t) => ({
       id: t.id,
       text: t.text,
@@ -45,18 +46,7 @@ export async function GET() {
     })),
   }))
 
-  // 追加: 折り畳みキーを取得
-  const { data: prefRow } = await supabaseAdmin
-    .from('ui_prefs')
-    .select('collapsed_titles')
-    .eq('user_id', userId)
-    .maybeSingle();
-
-  const collapsedTitles: string[] = Array.isArray(prefRow?.collapsed_titles)
-    ? prefRow!.collapsed_titles as string[]
-    : [];
-
-  return NextResponse.json({ ok: true, memos: composed, collapsedTitles })
+  return NextResponse.json({ ok: true, memos: composed })
 }
 
 // POST: accept a payload { memos: [{ id?, category, tasks:[{id?, text, done}] , sort_index? }], collapsedCategories?: string[] }
@@ -76,18 +66,6 @@ export async function POST(request: NextRequest) {
   const rawMemos = body?.memos;
   if (!Array.isArray(rawMemos)) {
     return NextResponse.json({ error: 'Invalid payload: { memos: [] } required' }, { status: 400 });
-  }
-
-  // 折りたたみ状態を保存
-  const collapsedCategories = body?.collapsedCategories;
-  if (Array.isArray(collapsedCategories)) {
-    await supabaseAdmin.from('ui_prefs').upsert({
-      user_id: userId,
-      collapsed_titles: collapsedCategories,
-      updated_at: new Date().toISOString(),
-    }, {
-      onConflict: 'user_id'
-    });
   }
 
   // 既存カテゴリ・タスク取得
@@ -121,6 +99,7 @@ export async function POST(request: NextRequest) {
       await supabaseAdmin.from('categories').update({
         title: c.category,
         sort_index: i,
+        collapsed: !!c.collapsed,
       }).eq('id', categoryId);
     } else {
       // INSERT category
@@ -128,6 +107,7 @@ export async function POST(request: NextRequest) {
         user_id: userId,
         title: c.category,
         sort_index: i,
+        collapsed: !!c.collapsed,
       }).select('id').single();
       categoryId = newCat?.id;
     }
@@ -177,10 +157,10 @@ type CategoryPayload = {
   id?: string;
   category: string;
   sort_index?: number;
+  collapsed?: boolean;
   tasks: TaskPayload[];
 };
 
 type MemosPayload = {
   memos: CategoryPayload[];
-  collapsedCategories?: string[];
 };
