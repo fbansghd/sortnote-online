@@ -117,9 +117,19 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // カテゴリーのUPDATE（upsertで一括処理）
+  // カテゴリーのUPDATE（個別に処理、並列実行）
   if (categoriesToUpdate.length > 0) {
-    await supabaseAdmin.from('categories').upsert(categoriesToUpdate);
+    await Promise.all(
+      categoriesToUpdate.map(cat =>
+        supabaseAdmin.from('categories')
+          .update({
+            title: cat.title,
+            sort_index: cat.sort_index,
+            collapsed: cat.collapsed
+          })
+          .eq('id', cat.id)
+      )
+    );
   }
 
   // カテゴリーのINSERT（一括処理）
@@ -180,9 +190,18 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // タスクのUPDATE（upsertで一括処理）
+  // タスクのUPDATE（個別に処理、並列実行）
   if (tasksToUpdate.length > 0) {
-    await supabaseAdmin.from('tasks').upsert(tasksToUpdate);
+    await Promise.all(
+      tasksToUpdate.map(task =>
+        supabaseAdmin.from('tasks')
+          .update({
+            text: task.text,
+            done: task.done
+          })
+          .eq('id', task.id)
+      )
+    );
   }
 
   // タスクのINSERT（一括処理）
