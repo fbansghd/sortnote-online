@@ -25,7 +25,7 @@ export async function GET() {
     .from('tasks')
     .select('*')
     .eq('user_id', userId)
-    .order('created_at', { ascending: true })
+    .order('sort_index', { ascending: true })
 
   if (taskErr) {
     console.error('Supabase tasks select error:', taskErr)
@@ -161,8 +161,8 @@ export async function POST(request: NextRequest) {
     await supabaseAdmin.from('tasks').delete().in('id', toDeleteTaskIds);
   }
 
-  const tasksToUpdate: Array<{ id: string; text: string; done: boolean }> = [];
-  const tasksToInsert: Array<{ user_id: string; category_id: string; text: string; done: boolean }> = [];
+  const tasksToUpdate: Array<{ id: string; text: string; done: boolean; sort_index: number }> = [];
+  const tasksToInsert: Array<{ user_id: string; category_id: string; text: string; done: boolean; sort_index: number }> = [];
 
   for (const c of rawMemos) {
     const categoryId = c.id;
@@ -170,13 +170,14 @@ export async function POST(request: NextRequest) {
 
     const incomingTasks = Array.isArray(c.tasks) ? c.tasks : [];
 
-    for (const t of incomingTasks) {
+    for (const [taskIndex, t] of incomingTasks.entries()) {
       if (t.id && existingTaskIds.has(t.id)) {
         // 既存タスク：UPDATE用配列に追加
         tasksToUpdate.push({
           id: t.id,
           text: t.text,
           done: !!t.done,
+          sort_index: taskIndex,
         });
       } else {
         // 新規タスク：INSERT用配列に追加
@@ -185,6 +186,7 @@ export async function POST(request: NextRequest) {
           category_id: categoryId,
           text: t.text ?? '',
           done: !!t.done,
+          sort_index: taskIndex,
         });
       }
     }
@@ -197,7 +199,8 @@ export async function POST(request: NextRequest) {
         supabaseAdmin.from('tasks')
           .update({
             text: task.text,
-            done: task.done
+            done: task.done,
+            sort_index: task.sort_index
           })
           .eq('id', task.id)
       )
@@ -220,7 +223,7 @@ export async function POST(request: NextRequest) {
     .from('tasks')
     .select('*')
     .eq('user_id', userId)
-    .order('created_at', { ascending: true });
+    .order('sort_index', { ascending: true });
 
   const updatedMemos = (updatedCats ?? []).map((cat) => ({
     id: cat.id,
