@@ -65,7 +65,7 @@ export function useMemos() {
   };
 
   // カテゴリー追加
-  const addCategory = () => {
+  const addCategory = async () => {
     if (!text) return;
     // 重複チェック
     const trimmedText = text.trim();
@@ -74,9 +74,24 @@ export function useMemos() {
       alert('同じ名前のカテゴリーが既に存在します');
       return;
     }
-    setMemos([...memos, { id: uuidv4(), category: trimmedText, tasks: [] }]);
+
+    // 一時的なIDでUIを更新（楽観的更新）
+    const tempId = uuidv4();
+    const newCategory = { id: tempId, category: trimmedText, tasks: [], collapsed: false };
+    setMemos([...memos, newCategory]);
     setText("");
     setTaskInputs([...taskInputs, ""]);
+
+    // サーバーに保存して正しいIDを取得
+    try {
+      const result = await saveMemosToServer();
+      if (result?.memos && Array.isArray(result.memos)) {
+        // サーバーから返された最新データで更新（正しいIDが含まれている）
+        setMemos(result.memos);
+      }
+    } catch (err) {
+      console.error('Failed to save new category:', err);
+    }
   };
 
   // タスク配列を未完了→完了順にソート
@@ -384,7 +399,7 @@ export function useMemos() {
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) throw new Error(data?.error || 'Save failed');
-      return { ok: true };
+      return { ok: true, memos: data?.memos };
     } catch (err) {
       console.error('Save failed:', err);
       return { ok: false, error: String(err) };
@@ -492,12 +507,14 @@ export function useMemosSync(memos, setMemos) {
     })();
   }, [status, setMemos]);
 
-  // 自動保存：空でも送る
+  // 自動保存
   React.useEffect(() => {
     if (status !== 'authenticated') return;
     if (!Array.isArray(memos)) return;
     // 初回ロードが完了するまで自動保存しない
     if (!didInitialLoad.current) return;
+    // 空のmemosは保存しない（データ消失防止）
+    if (memos.length === 0) return;
 
     const cleaned = memos.map((c, i) => ({
       id: c.id,
