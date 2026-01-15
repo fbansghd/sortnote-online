@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from "react";
-import { v4 as uuidv4 } from "uuid";
 import { arrayMove } from "@dnd-kit/sortable";
 import { useSession } from 'next-auth/react';
 import React from 'react'; // ← React is not defined の対策（追加）
@@ -65,7 +64,7 @@ export function useMemos() {
   };
 
   // カテゴリー追加
-  const addCategory = async () => {
+  const addCategory = () => {
     if (!text) return;
     // 重複チェック
     const trimmedText = text.trim();
@@ -75,23 +74,10 @@ export function useMemos() {
       return;
     }
 
-    // 一時的なIDでUIを更新（楽観的更新）
-    const tempId = uuidv4();
-    const newCategory = { id: tempId, category: trimmedText, tasks: [], collapsed: false };
-    setMemos([...memos, newCategory]);
+    // サーバーIDなしで追加（自動保存が処理する）
+    setMemos([...memos, { id: undefined, category: trimmedText, tasks: [], collapsed: false }]);
     setText("");
     setTaskInputs([...taskInputs, ""]);
-
-    // サーバーに保存して正しいIDを取得
-    try {
-      const result = await saveMemosToServer();
-      if (result?.memos && Array.isArray(result.memos)) {
-        // サーバーから返された最新データで更新（正しいIDが含まれている）
-        setMemos(result.memos);
-      }
-    } catch (err) {
-      console.error('Failed to save new category:', err);
-    }
   };
 
   // タスク配列を未完了→完了順にソート
@@ -134,9 +120,9 @@ export function useMemos() {
           return prev;
         }
 
-        const newTask = { 
-          id: uuidv4(), 
-          text: trimmed, 
+        const newTask = {
+          id: undefined, // サーバーが生成する
+          text: trimmed,
           done: false,
           createdAt: new Date().toISOString()
         };
@@ -540,8 +526,28 @@ export function useMemosSync(memos, setMemos) {
           body: JSON.stringify(outgoing),
         });
         const data = await res.json().catch(() => null);
-        if (res.ok) {
-          lastServerHash.current = outgoingHash;
+        if (res.ok && data?.memos) {
+          // サーバーから返された最新データでハッシュを更新
+          const serverCleaned = data.memos.map((c, i) => ({
+            id: c.id,
+            category: c.category,
+            sort_index: i,
+            collapsed: !!c.collapsed,
+            tasks: (Array.isArray(c.tasks) ? c.tasks : []).map(t => ({
+              id: t.id,
+              text: t.text ?? '',
+              done: !!t.done,
+            })),
+          }));
+          const serverHash = JSON.stringify({ memos: serverCleaned });
+
+          // サーバーのデータが現在と異なる場合のみ更新（ID同期のため）
+          if (serverHash !== outgoingHash) {
+            setMemos(data.memos);
+            lastServerHash.current = serverHash;
+          } else {
+            lastServerHash.current = outgoingHash;
+          }
         } else {
           console.error('[sync] save failed:', res.status, data);
         }
@@ -551,5 +557,5 @@ export function useMemosSync(memos, setMemos) {
     }, 1200);
 
     return () => clearTimeout(t);
-  }, [status, memos]);
+  }, [status, memos, setMemos]);
 }
