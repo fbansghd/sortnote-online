@@ -103,7 +103,10 @@ html {
   width: 100%;
 
   .header {
-    width: 100%;
+    position: sticky;
+    top: 0;
+    width: 100vw;
+    margin-left: calc(-50vw + 50%);
     padding-left: 1rem;
     padding-right: 1rem;
     display: flex;
@@ -111,6 +114,8 @@ html {
     justify-content: space-between;
     gap: 1.5rem;
     box-sizing: border-box;
+    background: var(--main-bg);
+    z-index: 100;
   }
 
   .headerControls {
