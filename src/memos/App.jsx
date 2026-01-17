@@ -2,7 +2,8 @@ import { DndContext, DragOverlay, pointerWithin, TouchSensor, MouseSensor, useSe
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import styles from "./App.module.scss";
 import SortableTask from "./SortableTask";
-import { useMemos, useMemosSync } from "./useMemos";
+import { useMemos } from "./useMemos";
+import { useMemosSync } from "./useMemosSync";
 import SortableCategory from "./SortableCategory";
 import React from "react";
 import { useSession, signOut } from 'next-auth/react';
@@ -153,6 +154,7 @@ function App() {
         )}
 
         {/* メイン画面（カテゴリー・タスク一覧） */}
+        {!(isMobile && showSidebar) && (
         <div className={styles.mainContainer}>
           {/* モバイル時のみカテゴリー切り替えボタン（左） */}
           {isMobile && memos.length > 1 && !showSidebar && (
@@ -368,6 +370,7 @@ function App() {
             </div>
           )}
         </div>
+        )}
       </div>
     </div>
   );
