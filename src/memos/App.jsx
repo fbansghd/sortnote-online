@@ -158,7 +158,7 @@ function App() {
         <div className={styles.mainContainer}>
           {/* モバイル時のみカテゴリー切り替えボタン（左） */}
           {isMobile && memos.length > 1 && !showSidebar && (
-            <div className={styles.categorySwitchArrows}>
+            <div className={styles.arrowLeft}>
               <button
                 className={styles.categoryArrowBtn}
                 onClick={handlePrevCategory}
@@ -343,7 +343,7 @@ function App() {
           </div>
           {/* モバイル時のみカテゴリー切り替えボタン（右） */}
           {isMobile && memos.length > 1 && !showSidebar && (
-            <div className={styles.categorySwitchArrows}>
+            <div className={styles.arrowRight}>
               <button
                 className={styles.categoryArrowBtn}
                 onClick={handleNextCategory}
