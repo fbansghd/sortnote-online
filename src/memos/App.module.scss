@@ -107,8 +107,8 @@ html {
     top: 0;
     width: 100vw;
     margin-left: calc(-50vw + 50%);
-    padding-left: 1rem;
-    padding-right: 1rem;
+    padding-left: 5rem;
+    padding-right: 5rem;
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
@@ -581,14 +581,17 @@ html {
   .container {
     width: 100%;
     box-sizing: border-box;
-    padding: 0 0vw;
+    padding: 0;
 
     .header {
       position: relative;
       width: 100%;
       margin-left: 0;
-      padding: 0px 0 0;
-      margin-left:50px;
+      padding: 0 1rem;
+    }
+
+    .category {
+      margin-left: 0;
     }
   }
 
@@ -597,11 +600,11 @@ html {
     top: 0.5rem;
     right: 0.5rem;
   }
+
   .sidebar {
     width: min(90vw, 320px);
     margin: 0 auto 1.5rem;
   }
-
 }
 
 .categorySwitchArrows {
