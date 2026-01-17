@@ -593,11 +593,9 @@ html {
   }
 
   .logoutBtn {
-    position: absolute;
-    top: 60;
-    right: 110;
-    margin: 0;
-    z-index: 10;
+    position: fixed;
+    top: 0.5rem;
+    right: 0.5rem;
   }
   .sidebar {
     width: min(90vw, 320px);
@@ -669,6 +667,10 @@ html {
 }
 
 .logoutBtn {
+  position: fixed;
+  top: 4em;
+  right: 3rem;
+  z-index: 200;
   height: 32px;
   padding: 0 12px;
   border: 1px solid #cfd3d8;
@@ -677,13 +679,9 @@ html {
   color: #1f1f1f;
   cursor: pointer;
   transition: background-color .2s, box-shadow .2s;
-  font-family: 'Ink Free', cursive, sans-serif; /* SortNoteと同じフォント */
+  font-family: 'Ink Free', cursive, sans-serif;
   font-weight: 900;
-  letter-spacing: 0.04em;  /* 任意: 少し広げて強調 */
-  align-self: flex-start;
-  margin-top: 1.3rem;  /* 真ん中よりも少し高い位置に配置 */
-  margin-left: auto;  /* 右端に配置 */
-  margin-right: 1rem;  /* 右端から少し余白 */
+  letter-spacing: 0.04em;
 }
 .logoutBtn:hover {
   background: #f7f9fc;
