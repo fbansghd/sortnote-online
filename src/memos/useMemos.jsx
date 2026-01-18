@@ -31,10 +31,12 @@ export function useMemos() {
   const [mobileCategoryIndex, setMobileCategoryIndex] = useState(0);
 
   // カテゴリーの折り畳み/展開切り替え（memosのcollapsedフラグを更新）
-  const toggleCategoryCollapse = (categoryId) => {
-    setMemos(prev => prev.map(cat =>
+  const toggleCategoryCollapse = async (categoryId) => {
+    const newMemos = memos.map(cat =>
       cat.id === categoryId ? { ...cat, collapsed: !cat.collapsed } : cat
-    ));
+    );
+    setMemos(newMemos);
+    await saveMemosToServer(newMemos);
   };
 
   // 折り畳まれていないカテゴリーのインデックス一覧取得
@@ -159,76 +161,64 @@ export function useMemos() {
 
   // タスク完了状態の切り替え
   // タスク操作の安全性強化
-  const toogleTaskDone = (catIdx, taskId) => {
-    setMemos((prev) => {
-      try {
-        if (catIdx < 0 || catIdx >= prev.length) {
-          console.error(`Invalid category index: ${catIdx}`);
-          return prev;
-        }
+  const toogleTaskDone = async (catIdx, taskId) => {
+    if (catIdx < 0 || catIdx >= memos.length) {
+      console.error(`Invalid category index: ${catIdx}`);
+      return;
+    }
 
-        const newMemos = [...prev];
-        const category = newMemos[catIdx];
-        
-        if (!category || !category.tasks) {
-          console.error(`Invalid category or tasks at index ${catIdx}`);
-          return prev;
-        }
+    const category = memos[catIdx];
+    if (!category || !category.tasks) {
+      console.error(`Invalid category or tasks at index ${catIdx}`);
+      return;
+    }
 
-        const tasks = category.tasks.map(task =>
-          task.id === taskId ? { ...task, done: !task.done } : task
-        );
-        
-        newMemos[catIdx] = { ...category, tasks: sortTasks(tasks) };
-        return newMemos;
-      } catch (error) {
-        console.error('Error toggling task:', error);
-        return prev;
-      }
-    });
+    const tasks = category.tasks.map(task =>
+      task.id === taskId ? { ...task, done: !task.done } : task
+    );
+
+    const newMemos = [...memos];
+    newMemos[catIdx] = { ...category, tasks: sortTasks(tasks) };
+
+    setMemos(newMemos);
+    await saveMemosToServer(newMemos);
   };
   // Task delete by IDs (safer than index-based)
-  const deleteTaskById = (categoryId, taskId) => {
-    setMemos((prev) => {
-      try {
-        const idx = prev.findIndex((cat) => cat.id === categoryId);
-        if (idx === -1) {
-          console.error(`Category not found for deleteTaskById: ${categoryId}`);
-          return prev;
-        }
-        const next = [...prev];
-        const cat = next[idx];
-        if (!cat || !Array.isArray(cat.tasks)) {
-          console.error(`Invalid category/tasks for deleteTaskById at index ${idx}`);
-          return prev;
-        }
-        const beforeLen = cat.tasks.length;
-        const newTasks = cat.tasks.filter((t) => t.id !== taskId);
-        if (newTasks.length === beforeLen) {
-          console.warn(`Task not found for deleteTaskById: ${taskId}`);
-          return prev;
-        }
-        next[idx] = { ...cat, tasks: newTasks };
-        return next;
-      } catch (e) {
-        console.error('deleteTaskById failed:', e);
-        return prev;
-      }
-    });
+  const deleteTaskById = async (categoryId, taskId) => {
+    const idx = memos.findIndex((cat) => cat.id === categoryId);
+    if (idx === -1) {
+      console.error(`Category not found for deleteTaskById: ${categoryId}`);
+      return;
+    }
+
+    const cat = memos[idx];
+    if (!cat || !Array.isArray(cat.tasks)) {
+      console.error(`Invalid category/tasks for deleteTaskById at index ${idx}`);
+      return;
+    }
+
+    const newTasks = cat.tasks.filter((t) => t.id !== taskId);
+    if (newTasks.length === cat.tasks.length) {
+      console.warn(`Task not found for deleteTaskById: ${taskId}`);
+      return;
+    }
+
+    const newMemos = [...memos];
+    newMemos[idx] = { ...cat, tasks: newTasks };
+
+    setMemos(newMemos);
+    await saveMemosToServer(newMemos);
   };
 
   // カテゴリー削除（そのカテゴリーのtasksも同時に削除）
-  const deleteCategory = (catIdx) => {
-    setMemos((memos) => {
-      // 削除するカテゴリーIDを取得
-      const removedCategory = memos[catIdx];
-      if (!removedCategory) return memos;
-      const removedCategoryId = removedCategory.id;
-      // カテゴリーとそのtasksを削除
-      return memos.filter((cat, i) => i !== catIdx);
-    });
+  const deleteCategory = async (catIdx) => {
+    const removedCategory = memos[catIdx];
+    if (!removedCategory) return;
+
+    const newMemos = memos.filter((_, i) => i !== catIdx);
+    setMemos(newMemos);
     setTaskInputs((inputs) => inputs.filter((_, i) => i !== catIdx));
-    saveMemosToServer();
+    await saveMemosToServer(newMemos);
   };
 
   // DnD Kit: ドラッグ開始時の処理
@@ -270,8 +260,9 @@ export function useMemos() {
     if (activeCategoryIndex !== -1 && overCategoryIndex !== -1) {
       const newMemos = arrayMove(memos, activeCategoryIndex, overCategoryIndex);
       setMemos(newMemos);
+      saveMemosToServer(newMemos);
       setActiveTask(null);
-      setTimeout(() => setActiveCategory(null), 0); // ← 非同期リセット
+      setTimeout(() => setActiveCategory(null), 0);
       return;
     }
 
@@ -311,8 +302,9 @@ export function useMemos() {
         tasks: arrayMove(memos[fromCategoryIndex].tasks, oldIndex, newIndex),
       };
       setMemos(newMemos);
+      saveMemosToServer(newMemos);
       setActiveTask(null);
-      setTimeout(() => setActiveCategory(null), 0); // ← 非同期リセット
+      setTimeout(() => setActiveCategory(null), 0);
       return;
     }
 
@@ -340,8 +332,9 @@ export function useMemos() {
     });
 
     setMemos(newMemos);
+    saveMemosToServer(newMemos);
     setActiveTask(null);
-    setTimeout(() => setActiveCategory(null), 0); // ← 非同期リセット
+    setTimeout(() => setActiveCategory(null), 0);
   };
 
   // DnD Kit: ドラッグキャンセル時の処理
