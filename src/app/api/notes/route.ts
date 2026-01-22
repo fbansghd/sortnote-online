@@ -161,7 +161,7 @@ export async function POST(request: NextRequest) {
     await supabaseAdmin.from('tasks').delete().in('id', toDeleteTaskIds);
   }
 
-  const tasksToUpdate: Array<{ id: string; text: string; done: boolean; sort_index: number }> = [];
+  const tasksToUpdate: Array<{ id: string; category_id: string; text: string; done: boolean; sort_index: number }> = [];
   const tasksToInsert: Array<{ user_id: string; category_id: string; text: string; done: boolean; sort_index: number }> = [];
 
   for (const c of rawMemos) {
@@ -172,9 +172,10 @@ export async function POST(request: NextRequest) {
 
     for (const [taskIndex, t] of incomingTasks.entries()) {
       if (t.id && existingTaskIds.has(t.id)) {
-        // 既存タスク：UPDATE用配列に追加
+        // 既存タスク：UPDATE用配列に追加（category_idも更新してカテゴリー移動に対応）
         tasksToUpdate.push({
           id: t.id,
+          category_id: categoryId,
           text: t.text,
           done: !!t.done,
           sort_index: taskIndex,
@@ -198,6 +199,7 @@ export async function POST(request: NextRequest) {
       tasksToUpdate.map(task =>
         supabaseAdmin.from('tasks')
           .update({
+            category_id: task.category_id,
             text: task.text,
             done: task.done,
             sort_index: task.sort_index
