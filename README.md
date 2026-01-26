@@ -1,9 +1,5 @@
 # SortNote
 
-<p align="center">
-	<img src="./public/sortnote-logo.svg" alt="SortNote ロゴ" width="160" />
-</p>
-
 SortNote は [Next.js](https://nextjs.org) で作られたドラッグ&ドロップ対応のタスク管理アプリです。Google ログインと Supabase を使用してカテゴリーとタスクを管理できます。
 
 ## はじめに
