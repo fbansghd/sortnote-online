@@ -5,7 +5,7 @@ import { useSession } from 'next-auth/react';
  * メモの初回ロードを管理するカスタムフック
  * @param {Function} setMemos - メモを更新する関数
  */
-export function useMemosSync(memos, setMemos) {
+export function useNotesSync(memos, setMemos) {
   const { status } = useSession();
   const didInitialLoad = React.useRef(false);
 

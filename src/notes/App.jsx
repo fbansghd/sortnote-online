@@ -2,8 +2,8 @@ import { DndContext, DragOverlay, pointerWithin, TouchSensor, MouseSensor, useSe
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import styles from "./App.module.scss";
 import SortableTask from "./SortableTask";
-import { useMemos } from "./useMemos";
-import { useMemosSync } from "./useMemosSync";
+import { useNotes } from "./useNotes";
+import { useNotesSync } from "./useNotesSync";
 import SortableCategory from "./SortableCategory";
 import React from "react";
 import { useSession, signOut } from 'next-auth/react';
@@ -21,7 +21,7 @@ function App() {
     setMemos,
     addCategory,
     addTaskToCategory,
-    toogleTaskDone,
+    toggleTaskDone,
     deleteTaskById,
     deleteCategory,
     showTaskInput,
@@ -41,10 +41,10 @@ function App() {
     setMobileCategoryIndex,
     handlePrevCategory,
     handleNextCategory,
-  } = useMemos();
+  } = useNotes();
 
   // enable auto-load / auto-save behavior (uses session internally)
-  useMemosSync(memos, setMemos);
+  useNotesSync(memos, setMemos);
   const { status } = useSession();
 
   // DnD Kitのセンサー設定（マウス・タッチ対応）
@@ -245,7 +245,7 @@ function App() {
                                       id={taskItem.id}
                                       text={taskItem.text}
                                       done={taskItem.done}
-                                      onToggle={() => toogleTaskDone(realIndex, taskItem.id)} // 正しいインデックス
+                                      onToggle={() => toggleTaskDone(realIndex, taskItem.id)} // 正しいインデックス
                                       onDelete={() => deleteTaskById(categoryItem.id, taskItem.id)} // categoryItem.idはID
                                     />
                                   ))}

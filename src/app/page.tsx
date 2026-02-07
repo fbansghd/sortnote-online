@@ -5,7 +5,7 @@ import React from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 
-const MemosApp = dynamic(() => import('@/memos/App'), { ssr: false })
+const NotesApp = dynamic(() => import('@/notes/App'), { ssr: false })
 
 export default function Page() {
   const { data: session, status } = useSession()
@@ -22,7 +22,7 @@ export default function Page() {
 
   return (
     <main>
-      <MemosApp />
+      <NotesApp />
     </main>
   )
 }

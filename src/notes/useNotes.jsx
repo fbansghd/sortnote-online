@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { arrayMove } from "@dnd-kit/sortable";
 import React from 'react'; // ← React is not defined の対策（追加）
 
-export function useMemos() {
+export function useNotes() {
   // カテゴリー追加用テキスト
   const [text, setText] = useState("");
   // 各カテゴリーごとのタスク入力欄の値
@@ -36,7 +36,7 @@ export function useMemos() {
       cat.id === categoryId ? { ...cat, collapsed: !cat.collapsed } : cat
     );
     setMemos(newMemos);
-    await saveMemosToServer(newMemos);
+    await saveNotesToServer(newMemos);
   };
 
   // 折り畳まれていないカテゴリーのインデックス一覧取得
@@ -81,7 +81,7 @@ export function useMemos() {
 
     // サーバーに保存してレスポンス後にUI更新
     try {
-      const result = await saveMemosToServer(newMemos);
+      const result = await saveNotesToServer(newMemos);
       if (result?.memos) {
         setMemos(result.memos);
       }
@@ -100,7 +100,6 @@ export function useMemos() {
     const trimmed = (task || '').toString().trim();
     if (!trimmed) return;
 
-    console.log(`Adding task "${trimmed}" to category index ${catIdx}`); // デバッグログ
 
     // インデックス範囲チェック
     if (catIdx < 0 || catIdx >= memos.length) {
@@ -121,7 +120,6 @@ export function useMemos() {
       existingTask.text === trimmed
     );
     if (isDuplicate) {
-      console.log('Duplicate task prevented:', trimmed);
       return;
     }
 
@@ -130,7 +128,6 @@ export function useMemos() {
       id: undefined, // サーバーが生成する
       text: trimmed,
       done: false,
-      createdAt: new Date().toISOString()
     };
 
     const newMemos = [...memos];
@@ -138,10 +135,8 @@ export function useMemos() {
     newMemos[catIdx] = {
       ...category,
       tasks: sortTasks(tasks),
-      updatedAt: new Date().toISOString()
     };
 
-    console.log(`Task added successfully to "${category.category}"`); // デバッグログ
 
     // 入力欄クリア
     const newInputs = [...taskInputs];
@@ -150,7 +145,7 @@ export function useMemos() {
 
     // サーバーに保存してレスポンス後にUI更新
     try {
-      const result = await saveMemosToServer(newMemos);
+      const result = await saveNotesToServer(newMemos);
       if (result?.memos) {
         setMemos(result.memos);
       }
@@ -161,7 +156,7 @@ export function useMemos() {
 
   // タスク完了状態の切り替え
   // タスク操作の安全性強化
-  const toogleTaskDone = async (catIdx, taskId) => {
+  const toggleTaskDone = async (catIdx, taskId) => {
     if (catIdx < 0 || catIdx >= memos.length) {
       console.error(`Invalid category index: ${catIdx}`);
       return;
@@ -181,7 +176,7 @@ export function useMemos() {
     newMemos[catIdx] = { ...category, tasks: sortTasks(tasks) };
 
     setMemos(newMemos);
-    await saveMemosToServer(newMemos);
+    await saveNotesToServer(newMemos);
   };
   // Task delete by IDs (safer than index-based)
   const deleteTaskById = async (categoryId, taskId) => {
@@ -207,7 +202,7 @@ export function useMemos() {
     newMemos[idx] = { ...cat, tasks: newTasks };
 
     setMemos(newMemos);
-    await saveMemosToServer(newMemos);
+    await saveNotesToServer(newMemos);
   };
 
   // カテゴリー削除（そのカテゴリーのtasksも同時に削除）
@@ -218,7 +213,7 @@ export function useMemos() {
     const newMemos = memos.filter((_, i) => i !== catIdx);
     setMemos(newMemos);
     setTaskInputs((inputs) => inputs.filter((_, i) => i !== catIdx));
-    await saveMemosToServer(newMemos);
+    await saveNotesToServer(newMemos);
   };
 
   // DnD Kit: ドラッグ開始時の処理
@@ -260,7 +255,7 @@ export function useMemos() {
     if (activeCategoryIndex !== -1 && overCategoryIndex !== -1) {
       const newMemos = arrayMove(memos, activeCategoryIndex, overCategoryIndex);
       setMemos(newMemos);
-      saveMemosToServer(newMemos);
+      saveNotesToServer(newMemos);
       setActiveTask(null);
       setTimeout(() => setActiveCategory(null), 0);
       return;
@@ -302,7 +297,7 @@ export function useMemos() {
         tasks: arrayMove(memos[fromCategoryIndex].tasks, oldIndex, newIndex),
       };
       setMemos(newMemos);
-      saveMemosToServer(newMemos);
+      saveNotesToServer(newMemos);
       setActiveTask(null);
       setTimeout(() => setActiveCategory(null), 0);
       return;
@@ -332,7 +327,7 @@ export function useMemos() {
     });
 
     setMemos(newMemos);
-    saveMemosToServer(newMemos);
+    saveNotesToServer(newMemos);
     setActiveTask(null);
     setTimeout(() => setActiveCategory(null), 0);
   };
@@ -365,9 +360,9 @@ export function useMemos() {
   
 
   // Server sync helpers (POST/GET to /api/notes)
-  // saveMemosToServer: idとcollapsedも送る
+  // saveNotesToServer: idとcollapsedも送る
   // dataToSave引数がある場合はそれを使用、なければ現在のmemosを使用
-  const saveMemosToServer = async (dataToSave = null) => {
+  const saveNotesToServer = async (dataToSave = null) => {
     try {
       const sourceData = dataToSave ?? memos;
       const cleaned = (Array.isArray(sourceData) ? sourceData : []).map((c, i) => ({
@@ -396,7 +391,7 @@ export function useMemos() {
     }
   };
 
-  const loadMemosFromServer = async () => {
+  const loadNotesFromServer = async () => {
     try {
       const res = await fetch('/api/notes');
       const data = await res.json();
@@ -424,7 +419,7 @@ export function useMemos() {
     setMemos,
     addCategory,
     addTaskToCategory,
-    toogleTaskDone,
+    toggleTaskDone,
     deleteTaskById,
     deleteCategory,
     showTaskInput,
@@ -448,7 +443,7 @@ export function useMemos() {
     setMobileCategoryIndex,
     handlePrevCategory,
     handleNextCategory,
-    saveMemosToServer,
-    loadMemosFromServer,
+    saveNotesToServer,
+    loadNotesFromServer,
   };
 }
