@@ -1,9 +1,10 @@
--- Schema for categories and tasks
+-- Schema for categories and tasks (complete, current schema)
 create table if not exists public.categories (
   id uuid default gen_random_uuid() primary key,
   user_id text not null,
   title text not null,
   sort_index integer default 0,
+  collapsed boolean default false,
   created_at timestamp with time zone default now()
 );
 
@@ -13,8 +14,11 @@ create table if not exists public.tasks (
   category_id uuid references public.categories(id) on delete cascade,
   text text not null,
   done boolean default false,
+  sort_index integer default 0,
   created_at timestamp with time zone default now()
 );
+
+create index if not exists tasks_sort_index_idx on public.tasks(sort_index);
 
 alter table public.categories enable row level security;
 alter table public.tasks enable row level security;
