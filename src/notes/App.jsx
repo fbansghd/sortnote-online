@@ -44,7 +44,7 @@ function App() {
   } = useNotes();
 
   // enable auto-load / auto-save behavior (uses session internally)
-  useNotesSync(memos, setMemos);
+  const { isLoading, isReady } = useNotesSync(memos, setMemos);
   const { status } = useSession();
 
   // DnD Kitのセンサー設定（マウス・タッチ対応）
@@ -73,6 +73,23 @@ function App() {
       }
     }
   }, [isMobile, showSidebar, memos, mobileCategoryIndex, setMobileCategoryIndex]);
+
+  // 初回ロード中の表示
+  if (status === 'authenticated' && !isReady) {
+    return (
+      <div className={`${isAltColor ? styles.themeB : styles.themeA} ${styles.container}`}>
+        <div style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          height: '100vh',
+          fontSize: '1.5rem'
+        }}>
+          Loading...
+        </div>
+      </div>
+    );
+  }
 
   return (
     // テーマとレイアウトのコンテナ
