@@ -359,7 +359,7 @@ export function useNotes() {
 
   
 
-  // Server sync helpers (POST/GET to /api/notes)
+  // Server sync helpers (POST/GET to /api/data)
   // saveNotesToServer: idとcollapsedも送る
   // dataToSave引数がある場合はそれを使用、なければ現在のmemosを使用
   const saveNotesToServer = async (dataToSave = null) => {
@@ -377,7 +377,7 @@ export function useNotes() {
         })),
       }));
 
-      const res = await fetch('/api/notes', {
+      const res = await fetch('/api/data', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ memos: cleaned }),

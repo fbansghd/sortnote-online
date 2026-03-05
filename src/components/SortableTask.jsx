@@ -1,6 +1,6 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import styles from "./App.module.scss";
+import styles from "@/styles/App.module.scss";
 
 // ドラッグ＆ドロップ可能なタスクコンポーネント
 function SortableTask({ id, text, done, onToggle, onDelete, isOverlay, isParentOverlay }) {

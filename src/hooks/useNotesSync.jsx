@@ -27,7 +27,7 @@ export function useNotesSync(memos, setMemos) {
 
     (async () => {
       try {
-        const res = await fetch('/api/notes', { cache: 'no-store' });
+        const res = await fetch('/api/data', { cache: 'no-store' });
         if (!res.ok) {
           setIsReady(true);
           setIsLoading(false);

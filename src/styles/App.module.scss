@@ -122,10 +122,6 @@ html {
     z-index: 100;
   }
 
-  .headerControls {
-    /* 未使用になったため削除または空 */
-  }
-
   .headerContainer {
     display: flex;
     flex-direction: column;
@@ -264,6 +260,7 @@ html {
             line-height: 1.4;
             display: -webkit-box;
             -webkit-line-clamp: 3;
+            line-clamp: 3;
             -webkit-box-orient: vertical;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -669,10 +666,6 @@ html {
   overflow: visible;
   display: flex;
   flex-direction: column;
-}
-
-.dragging{
-  
 }
 
 /* Sync button and status */

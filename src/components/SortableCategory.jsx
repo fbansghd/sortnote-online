@@ -1,7 +1,7 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { motion } from "framer-motion";
-import styles from "./App.module.scss";
+import styles from "@/styles/App.module.scss";
 
 // ドラッグ＆ドロップ可能なカテゴリーコンポーネント
 function SortableCategory({ id, label, children, isOverlay, transform: overlayTransform, onDelete, onCollapse }) {

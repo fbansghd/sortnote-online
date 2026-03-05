@@ -1,9 +1,9 @@
 import { DndContext, DragOverlay, pointerWithin, TouchSensor, MouseSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
-import styles from "./App.module.scss";
+import styles from "@/styles/App.module.scss";
 import SortableTask from "./SortableTask";
-import { useNotes } from "./useNotes";
-import { useNotesSync } from "./useNotesSync";
+import { useNotes } from "@/hooks/useNotes";
+import { useNotesSync } from "@/hooks/useNotesSync";
 import SortableCategory from "./SortableCategory";
 import React from "react";
 import { useSession, signOut } from 'next-auth/react';

@@ -5,7 +5,7 @@ import React from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 
-const NotesApp = dynamic(() => import('@/notes/App'), { ssr: false })
+const NotesApp = dynamic(() => import('@/components/App'), { ssr: false })
 
 export default function Page() {
   const { data: session, status } = useSession()
