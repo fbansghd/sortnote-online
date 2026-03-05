@@ -1,21 +1,21 @@
 import React from 'react';
 import { useSession } from 'next-auth/react';
+import type { Memo, NotesSyncState } from '@/types/notes';
 
 /**
  * メモの初回ロードを管理するカスタムフック
- * @param {Function} setMemos - メモを更新する関数
- * @returns {{ isLoading: boolean, isReady: boolean }} ロード状態
  */
-export function useNotesSync(memos, setMemos) {
+export function useNotesSync(
+  memos: Memo[],
+  setMemos: (memos: Memo[]) => void
+): NotesSyncState {
   const { status } = useSession();
-  const didInitialLoad = React.useRef(false);
-  const [isLoading, setIsLoading] = React.useState(false);
-  const [isReady, setIsReady] = React.useState(false);
+  const didInitialLoad = React.useRef<boolean>(false);
+  const [isLoading, setIsLoading] = React.useState<boolean>(false);
+  const [isReady, setIsReady] = React.useState<boolean>(false);
 
-  // 初回ロード：サーバー優先
   React.useEffect(() => {
     if (status !== 'authenticated' || didInitialLoad.current) {
-      // 認証されていない場合もreadyにする（ログイン画面など）
       if (status === 'unauthenticated') {
         setIsReady(true);
       }

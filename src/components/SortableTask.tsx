@@ -2,8 +2,18 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import styles from "@/styles/App.module.scss";
 
+interface SortableTaskProps {
+  id: string;
+  text: string;
+  done: boolean;
+  onToggle: () => void;
+  onDelete: () => void;
+  isOverlay?: boolean;
+  isParentOverlay?: boolean;
+}
+
 // ドラッグ＆ドロップ可能なタスクコンポーネント
-function SortableTask({ id, text, done, onToggle, onDelete, isOverlay, isParentOverlay }) {
+function SortableTask({ id, text, done, onToggle, onDelete, isOverlay, isParentOverlay }: SortableTaskProps) {
   // DnD KitのuseSortableフックでドラッグ状態や属性を取得
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
 
@@ -52,7 +62,7 @@ function SortableTask({ id, text, done, onToggle, onDelete, isOverlay, isParentO
           {/* タスク削除アイコン */}
           <span
             className={styles.deleteIcon}
-            onClick={() => onDelete(id)}
+            onClick={onDelete}
             tabIndex={0}
             role="button"
             aria-label="タスク削除"

@@ -1,10 +1,22 @@
 import { useSortable } from "@dnd-kit/sortable";
+import type { Transform } from "@dnd-kit/utilities";
 import { CSS } from "@dnd-kit/utilities";
 import { motion } from "framer-motion";
 import styles from "@/styles/App.module.scss";
+import type { ReactNode } from "react";
+
+interface SortableCategoryProps {
+  id: string;
+  label: string;
+  children?: ReactNode;
+  isOverlay?: boolean;
+  transform?: Transform | null;
+  onDelete?: () => void;
+  onCollapse?: () => void;
+}
 
 // ドラッグ＆ドロップ可能なカテゴリーコンポーネント
-function SortableCategory({ id, label, children, isOverlay, transform: overlayTransform, onDelete, onCollapse }) {
+function SortableCategory({ id, label, children, isOverlay, transform: overlayTransform, onDelete, onCollapse }: SortableCategoryProps) {
   // DnD KitのuseSortableフックでドラッグ状態や属性を取得
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
   // オーバーレイ表示時はoverlayTransformを使う
