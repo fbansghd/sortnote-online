@@ -71,6 +71,28 @@ src/
 - **型安全性**: TypeScript による厳格な型チェック
 - **レスポンシブ対応**: モバイルとデスクトップで最適化された UI
 
+## データベース設計
+
+```mermaid
+erDiagram
+    USERS ||--o{ CATEGORIES : owns
+    CATEGORIES ||--o{ TASKS : contains
+
+    USERS {
+        uuid id PK
+    }
+
+    CATEGORIES {
+        uuid id PK
+        text user_id FK
+    }
+
+    TASKS {
+        uuid id PK
+        uuid category_id FK
+    }
+```
+
 ## 主な機能
 
 ### 認証・データ管理
