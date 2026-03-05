@@ -76,10 +76,11 @@ src/
 ```mermaid
 erDiagram
     USERS ||--o{ CATEGORIES : owns
+    USERS ||--o{ TASKS : owns
     CATEGORIES ||--o{ TASKS : contains
 
     USERS {
-        uuid id PK
+        text id PK
     }
 
     CATEGORIES {
@@ -89,6 +90,7 @@ erDiagram
 
     TASKS {
         uuid id PK
+        text user_id FK
         uuid category_id FK
     }
 ```
