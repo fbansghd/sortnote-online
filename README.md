@@ -76,7 +76,6 @@ src/
 ```mermaid
 erDiagram
     USERS ||--o{ CATEGORIES : owns
-    USERS ||--o{ TASKS : owns
     CATEGORIES ||--o{ TASKS : contains
 
     USERS {
@@ -90,7 +89,6 @@ erDiagram
 
     TASKS {
         uuid id PK
-        text user_id FK
         uuid category_id FK
     }
 ```
@@ -147,6 +145,7 @@ bun dev
 このアプリはカテゴリーとタスクを Supabase に保存します。データの永続化を有効にするには：
 
 1. Supabase プロジェクトの SQL エディタで `supabase-schema.sql`（リポジトリルートにあります）を実行して、`categories` と `tasks` テーブルと RLS ポリシーを作成してください。
+   - **既存のデータベースをお持ちの場合**: 代わりに `supabase-migration.sql` を実行してください（旧スキーマから新スキーマへの移行）
 
 2. `.env.local` ファイルに以下の環境変数を追加してください（秘密情報はコミットしないでください）：
 
