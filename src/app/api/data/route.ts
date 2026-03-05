@@ -24,7 +24,6 @@ export async function GET() {
   const { data: tasks, error: taskErr } = await supabaseAdmin
     .from('tasks')
     .select('*')
-    .eq('user_id', userId)
     .order('sort_index', { ascending: true })
 
   if (taskErr) {
@@ -79,8 +78,7 @@ export async function POST(request: NextRequest) {
 
   const { data: existingTasks } = await supabaseAdmin
     .from('tasks')
-    .select('id, category_id')
-    .eq('user_id', userId);
+    .select('id, category_id');
 
   const existingTaskIds = new Set((existingTasks ?? []).map(t => t.id));
 
@@ -162,7 +160,7 @@ export async function POST(request: NextRequest) {
   }
 
   const tasksToUpdate: Array<{ id: string; category_id: string; text: string; done: boolean; sort_index: number }> = [];
-  const tasksToInsert: Array<{ user_id: string; category_id: string; text: string; done: boolean; sort_index: number }> = [];
+  const tasksToInsert: Array<{ category_id: string; text: string; done: boolean; sort_index: number }> = [];
 
   for (const c of rawMemos) {
     const categoryId = c.id;
@@ -183,7 +181,6 @@ export async function POST(request: NextRequest) {
       } else {
         // 新規タスク：INSERT用配列に追加
         tasksToInsert.push({
-          user_id: userId,
           category_id: categoryId,
           text: t.text ?? '',
           done: !!t.done,
@@ -224,7 +221,6 @@ export async function POST(request: NextRequest) {
   const { data: updatedTasks } = await supabaseAdmin
     .from('tasks')
     .select('*')
-    .eq('user_id', userId)
     .order('sort_index', { ascending: true });
 
   const updatedMemos = (updatedCats ?? []).map((cat) => ({
