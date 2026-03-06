@@ -43,18 +43,11 @@ export function useNotesData() {
       return;
     }
 
-    const newMemos: Memo[] = [...memos, { id: '', category: trimmedText, tasks: [], collapsed: false }];
+    const newMemos: Memo[] = [...memos, { id: crypto.randomUUID(), category: trimmedText, tasks: [], collapsed: false }];
     setText("");
     setTaskInputs([...taskInputs, ""]);
-
-    try {
-      const result = await saveNotesToServer(newMemos);
-      if (result?.memos) {
-        setMemos(result.memos);
-      }
-    } catch (err) {
-      console.error('Failed to sync category ID:', err);
-    }
+    setMemos(newMemos);
+    await saveNotesToServer(newMemos);
   };
 
   /**
@@ -82,7 +75,7 @@ export function useNotesData() {
     }
 
     const newTask: Task = {
-      id: '',
+      id: crypto.randomUUID(),
       text: trimmed,
       done: false,
     };
@@ -97,15 +90,8 @@ export function useNotesData() {
     const newInputs = [...taskInputs];
     newInputs[catIdx] = "";
     setTaskInputs(newInputs);
-
-    try {
-      const result = await saveNotesToServer(newMemos);
-      if (result?.memos) {
-        setMemos(result.memos);
-      }
-    } catch (err) {
-      console.error('Failed to sync task ID:', err);
-    }
+    setMemos(newMemos);
+    await saveNotesToServer(newMemos);
   };
 
   /**
