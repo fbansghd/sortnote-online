@@ -17,7 +17,7 @@ export const authOptions: NextAuthOptions = {
   ],
   callbacks: {
     async session({ session, token, user }) {
-      // Ensure session.user.id is populated from token.sub or user.id
+      // session.user.id を token.sub または user.id から確実に設定する
       if (session.user) {
         if (token?.sub) session.user.id = token.sub
         else if (user && typeof (user as { id?: string }).id === 'string') {

@@ -21,14 +21,14 @@ const handler = NextAuth({
   ],
   callbacks: {
     async session({ session, token }) {
-      // Send properties to the client
+      // セッション情報をクライアントに渡す
       if (session.user && token?.sub) {
         session.user.id = token.sub
       }
       return session
     },
     async jwt({ token, user }) {
-      // Add user id to token
+      // ユーザーIDをトークンに追加
       if (user) {
         token.sub = user.id
       }

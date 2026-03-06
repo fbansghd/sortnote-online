@@ -3,13 +3,13 @@ import { authOptions } from '@/app/api/auth/[...nextauth]/authOptions'
 import { supabaseAdmin } from '@/lib/supabase-server'
 import { NextRequest, NextResponse } from 'next/server';
 
-// GET: return composed categories with tasks for the authenticated user
+// GET: 認証済みユーザーのカテゴリーとタスクを合成して返す
 export async function GET() {
   const session = await getServerSession(authOptions)
   const userId = session?.user?.id ?? session?.user?.email ?? null
   if (!session || !userId) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
 
-  // Fetch categories and tasks
+  // カテゴリーとタスクを取得
   const { data: categories, error: catErr } = await supabaseAdmin
     .from('categories')
     .select('*')
@@ -31,7 +31,7 @@ export async function GET() {
     return NextResponse.json({ error: taskErr.message }, { status: 500 })
   }
 
-  // Compose memos: categories with tasks array and collapsed state
+  // カテゴリーにタスク配列と折り畳み状態を合成
   const composed = categories.map((cat) => ({
     id: cat.id,
     category: cat.title,
@@ -48,8 +48,7 @@ export async function GET() {
   return NextResponse.json({ ok: true, memos: composed })
 }
 
-// POST: accept a payload { memos: [{ id?, category, tasks:[{id?, text, done}] , sort_index? }], collapsedCategories?: string[] }
-// and replace the user's categories/tasks with the provided structure in a transaction
+// POST: { memos: [{ id?, category, tasks:[{id?, text, done}], sort_index? }] } を受け取り、ユーザーのカテゴリー・タスクを更新する
 export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions);
   const userId = session?.user?.id ?? session?.user?.email ?? null;
@@ -76,11 +75,14 @@ export async function POST(request: NextRequest) {
   const existingCatIds = new Set((existingCats ?? []).map(c => c.id));
   const incomingCatIds = new Set(rawMemos.map(c => c.id).filter(Boolean));
 
-  const { data: existingTasks } = await supabaseAdmin
-    .from('tasks')
-    .select('id, category_id');
-
-  const existingTaskIds = new Set((existingTasks ?? []).map(t => t.id));
+  const existingTaskIds = new Set<string>();
+  if (existingCatIds.size > 0) {
+    const { data: existingTasks } = await supabaseAdmin
+      .from('tasks')
+      .select('id, category_id')
+      .in('category_id', [...existingCatIds]);
+    (existingTasks ?? []).forEach(t => existingTaskIds.add(t.id));
+  }
 
   // カテゴリー削除（DBにあるが送信されていないID）
   const toDeleteCatIds = [...existingCatIds].filter(id => !incomingCatIds.has(id));
@@ -92,7 +94,6 @@ export async function POST(request: NextRequest) {
   // カテゴリーの一括UPDATE/INSERT（バッチ処理）
   const categoriesToUpdate: Array<{ id: string; title: string; sort_index: number; collapsed: boolean }> = [];
   const categoriesToInsert: Array<{ user_id: string; title: string; sort_index: number; collapsed: boolean }> = [];
-  const categoryIdMap = new Map<number, number>(); // 一時ID → 新規カテゴリーのインデックス
 
   for (const [i, c] of rawMemos.entries()) {
     if (c.id && existingCatIds.has(c.id)) {
@@ -111,7 +112,6 @@ export async function POST(request: NextRequest) {
         sort_index: i,
         collapsed: !!c.collapsed,
       });
-      categoryIdMap.set(i, categoriesToInsert.length - 1);
     }
   }
 
@@ -218,10 +218,10 @@ export async function POST(request: NextRequest) {
     .eq('user_id', userId)
     .order('sort_index', { ascending: true });
 
-  const { data: updatedTasks } = await supabaseAdmin
-    .from('tasks')
-    .select('*')
-    .order('sort_index', { ascending: true });
+  const updatedCatIds = (updatedCats ?? []).map(c => c.id);
+  const { data: updatedTasks } = updatedCatIds.length > 0
+    ? await supabaseAdmin.from('tasks').select('*').in('category_id', updatedCatIds).order('sort_index', { ascending: true })
+    : { data: [] };
 
   const updatedMemos = (updatedCats ?? []).map((cat) => ({
     id: cat.id,

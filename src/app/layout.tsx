@@ -16,12 +16,12 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "SortNote",
   description: "SortNote is a drag-and-drop task manager that syncs with Supabase.",
-  // Resolve absolute URLs for open graph / twitter images
+  // OGP・Twitterカード用の絶対URLを解決
   metadataBase: process.env.NEXT_PUBLIC_SITE_URL
     ? new URL(process.env.NEXT_PUBLIC_SITE_URL)
     : new URL("http://localhost:3000"),
   icons: {
-    // Use the PNG already present in public/ (icon.png). Add cache-bust param.
+    // public/icon.png を使用。キャッシュバスターパラメータ付き。
     icon: [{ url: "/icon.png?v=2", type: "image/png", sizes: "any" }],
     shortcut: [{ url: "/icon.png?v=2", type: "image/png" }],
     apple: [{ url: "/icon.png?v=2", type: "image/png" }],
