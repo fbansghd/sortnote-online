@@ -34,6 +34,8 @@ src/
 │   ├── api/               # API Routes
 │   │   ├── auth/         # NextAuth エンドポイント
 │   │   └── data/         # データ同期 API
+│   │       ├── route.ts  # GET / POST ハンドラー
+│   │       └── helpers.ts # DB同期ヘルパー関数
 │   ├── login/            # ログインページ
 │   └── page.tsx          # メインページ
 ├── components/            # React コンポーネント
@@ -58,7 +60,8 @@ src/
 ├── lib/                   # ユーティリティ
 │   └── supabase-server.ts
 ├── types/                 # 型定義
-│   ├── notes.ts
+│   ├── notes.ts           # フロント共通の型
+│   ├── api.ts             # APIペイロードの型
 │   └── next-auth.d.ts
 └── styles/               # グローバルスタイル
     └── App.module.scss
@@ -70,6 +73,8 @@ src/
 - **コンポーネント分離**: 再利用可能な小さなコンポーネントに分割
 - **型安全性**: TypeScript による厳格な型チェック
 - **レスポンシブ対応**: モバイルとデスクトップで最適化された UI
+- **クライアント側 ID 発行**: `crypto.randomUUID()` でクライアントが ID を生成し、サーバーへの往復を削減
+- **DB ベースの同期**: upsert + DB 側 NOT IN 削除で差分計算をサーバーに委譲。`ON DELETE CASCADE` によりカテゴリー削除時のタスク削除も自動処理
 
 ## データベース設計
 
