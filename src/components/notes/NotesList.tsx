@@ -1,6 +1,6 @@
 import { DndContext, DragOverlay, pointerWithin } from "@dnd-kit/core";
 import type { SensorDescriptor, SensorOptions, DragStartEvent, DragEndEvent } from "@dnd-kit/core";
-import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { SortableContext } from "@dnd-kit/sortable";
 import styles from "@/styles/App.module.scss";
 import SortableTask from "../SortableTask";
 import SortableCategory from "../SortableCategory";
@@ -63,7 +63,7 @@ export function NotesList({
       >
         <SortableContext
           items={memos.map(cat => cat.id)}
-          strategy={verticalListSortingStrategy}
+          strategy={() => null}
         >
           {memos
             .map((categoryItem, realIndex) => {
@@ -96,7 +96,7 @@ export function NotesList({
                       <div>
                         <SortableContext
                           items={categoryItem.tasks?.map(task => task.id) || []}
-                          strategy={verticalListSortingStrategy}
+                          strategy={() => null}
                         >
                           {(categoryItem.tasks || [])
                             .slice()

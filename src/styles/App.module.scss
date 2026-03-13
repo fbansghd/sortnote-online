@@ -166,9 +166,13 @@ html {
     .sortableCategory {
       background-color: var(--main-bg);
       margin-right: 0.6rem;
+      margin-bottom: 16px;
       height: auto;
+      min-height: 100px;
       display: flex;
       flex-direction: column;
+      border-radius: 18px;
+      border: 3px solid var(--category-border);
 
       .categoryHandle {
         color: var(--categroy-handle);
@@ -563,6 +567,27 @@ html {
   opacity: 0.8;
   margin-bottom: 2px !important;
   padding: 0 !important;
+}
+
+// オーバーレイ表示中のカテゴリーアニメーション
+// CSS translate プロパティは transform と独立して合成されるため DnD の transform と干渉しない
+.sortableCategoryOverlay {
+  border-color: var(--category-border-overlay);
+  box-shadow: 0 8px 24px #3282B888, 0 0 0 2px #3282B8;
+  background: var(--category-bg) !important;
+  pointer-events: none;
+  animation: categoryOverlayEnter 0.1s ease-out forwards;
+}
+
+@keyframes categoryOverlayEnter {
+  from {
+    translate: 0 10px;
+    opacity: 0.85;
+  }
+  to {
+    translate: 0 0;
+    opacity: 1;
+  }
 }
 
 .categoryContainerOverlay {
