@@ -3,13 +3,13 @@
  */
 
 export type TaskPayload = {
-  id?: string;
+  id: string;
   text: string;
   done: boolean;
 };
 
 export type CategoryPayload = {
-  id?: string;
+  id: string;
   category: string;
   sort_index?: number;
   collapsed?: boolean;

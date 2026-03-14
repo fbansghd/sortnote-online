@@ -1,9 +1,26 @@
 import { supabaseAdmin } from '@/lib/supabase-server';
 import type { CategoryPayload } from '@/types/api';
 
+type DbCategory = {
+  id: string;
+  user_id: string;
+  title: string;
+  sort_index: number;
+  collapsed: boolean;
+  created_at: string;
+};
+
+type DbTask = {
+  id: string;
+  category_id: string;
+  text: string;
+  done: boolean;
+  sort_index: number;
+  created_at: string;
+};
+
 // カテゴリーとタスクをmemos形式に合成
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function composeMemos(cats: any[], tasks: any[]) {
+export function composeMemos(cats: DbCategory[], tasks: DbTask[]) {
   return cats.map((cat) => ({
     id: cat.id,
     category: cat.title,
@@ -40,7 +57,7 @@ export async function syncCategories(
   }
 
   // 送信されていないカテゴリーをDB側で削除（ON DELETE CASCADEでタスクも自動削除）
-  const incomingCatIds = rawMemos.map(c => c.id) as string[];
+  const incomingCatIds = rawMemos.map(c => c.id);
   if (incomingCatIds.length > 0) {
     const { error } = await supabaseAdmin.from('categories')
       .delete()
@@ -59,8 +76,8 @@ export async function syncCategories(
 export async function syncTasks(
   rawMemos: CategoryPayload[],
 ): Promise<void> {
-  const allCatIds = rawMemos.map(c => c.id) as string[];
-  const incomingTaskIds = rawMemos.flatMap(c => (c.tasks || []).map(t => t.id)) as string[];
+  const allCatIds = rawMemos.map(c => c.id);
+  const incomingTaskIds = rawMemos.flatMap(c => (c.tasks || []).map(t => t.id));
 
   // 送信されていないタスクをDB側で削除（upsertより先に実行）
   if (allCatIds.length > 0) {
@@ -81,7 +98,7 @@ export async function syncTasks(
   const allTasks = rawMemos.flatMap((c) =>
     (Array.isArray(c.tasks) ? c.tasks : []).map((t, taskIndex) => ({
       id: t.id,
-      category_id: c.id!,
+      category_id: c.id,
       text: t.text ?? '',
       done: !!t.done,
       sort_index: taskIndex,
