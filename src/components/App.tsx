@@ -3,7 +3,6 @@ import styles from "@/styles/App.module.scss";
 import { useNotes } from "@/hooks/useNotes";
 import { useNotesSync } from "@/hooks/useNotesSync";
 import React from "react";
-import { useSession } from 'next-auth/react';
 import { NotesLoadingState } from "./notes/NotesLoadingState";
 import { NotesHeader } from "./notes/NotesHeader";
 import { NotesSidebar } from "./notes/NotesSidebar";
@@ -48,7 +47,6 @@ function App() {
   } = notesState;
 
   const { isReady } = useNotesSync(memos, setMemos);
-  const { status } = useSession();
 
   // DnD Kitのセンサー設定（マウス・タッチ対応）
   const sensors = useSensors(
@@ -79,7 +77,7 @@ function App() {
   }, [isMobile, showSidebar, memos, mobileCategoryIndex, setMobileCategoryIndex]);
 
   // 初回ロード中の表示
-  if (status === 'authenticated' && !isReady) {
+  if (!isReady) {
     return <NotesLoadingState isAltColor={isAltColor} />;
   }
 
@@ -92,7 +90,7 @@ function App() {
         setIsAltColor={setIsAltColor}
         showSidebar={showSidebar}
         setShowSidebar={setShowSidebar}
-        isAuthenticated={status === 'authenticated'}
+        isAuthenticated={true}
       />
 
       <div className={styles.body}>
