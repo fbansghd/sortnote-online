@@ -6,9 +6,10 @@ import type { DragStartEvent, DragEndEvent } from '@dnd-kit/core';
 
 /**
  * ドラッグ&ドロップのロジックを管理するカスタムフック
+ * reorderは楽観的更新を行い、失敗時はpre-drag stateへロールバック
  */
 export function useNotesDnd(memos: Memo[], setMemos: (memos: Memo[]) => void) {
-  const { saveNotesToServer } = useNotesApi();
+  const { reorderCategories, reorderTasks, updateTask } = useNotesApi();
 
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [activeCategory, setActiveCategory] = useState<ActiveCategory | null>(null);
@@ -50,13 +51,18 @@ export function useNotesDnd(memos: Memo[], setMemos: (memos: Memo[]) => void) {
       return;
     }
 
-    // カテゴリーの並び替え
+    // カテゴリーの並び替え（楽観的更新 + 失敗時ロールバック）
     const activeCategoryIndex = memos.findIndex((cat) => cat.id === active.id);
     const overCategoryIndex = memos.findIndex((cat) => cat.id === over.id);
     if (activeCategoryIndex !== -1 && overCategoryIndex !== -1) {
+      const prevMemos = memos;
       const newMemos = arrayMove(memos, activeCategoryIndex, overCategoryIndex);
       setMemos(newMemos);
-      saveNotesToServer(newMemos);
+
+      reorderCategories(newMemos.map(c => c.id)).then(result => {
+        if (!result.ok) setMemos(prevMemos);
+      });
+
       setActiveTask(null);
       setTimeout(() => setActiveCategory(null), 0);
       return;
@@ -87,23 +93,28 @@ export function useNotesDnd(memos: Memo[], setMemos: (memos: Memo[]) => void) {
       }
     }
 
+    const prevMemos = memos;
+
     if (fromCategoryIndex === toCategoryIndex) {
-      // 同じカテゴリー内でタスクの並び替え
+      // 同じカテゴリー内でタスクの並び替え（楽観的更新 + 失敗時ロールバック）
       const oldIndex = memos[fromCategoryIndex].tasks.findIndex((t) => t.id === active.id);
       const newIndex = overIndex;
       const newMemos = [...memos];
-      newMemos[fromCategoryIndex] = {
-        ...newMemos[fromCategoryIndex],
-        tasks: arrayMove(memos[fromCategoryIndex].tasks, oldIndex, newIndex),
-      };
+      const reorderedTasks = arrayMove(memos[fromCategoryIndex].tasks, oldIndex, newIndex);
+      newMemos[fromCategoryIndex] = { ...newMemos[fromCategoryIndex], tasks: reorderedTasks };
       setMemos(newMemos);
-      saveNotesToServer(newMemos);
+
+      const categoryId = memos[fromCategoryIndex].id;
+      reorderTasks(categoryId, reorderedTasks.map(t => t.id)).then(result => {
+        if (!result.ok) setMemos(prevMemos);
+      });
+
       setActiveTask(null);
       setTimeout(() => setActiveCategory(null), 0);
       return;
     }
 
-    // タスクを別カテゴリーへ移動
+    // タスクを別カテゴリーへ移動（楽観的更新 + 失敗時ロールバック）
     const task = memos[fromCategoryIndex].tasks.find((task) => task.id === active.id);
     if (!task) {
       setActiveTask(null);
@@ -117,17 +128,23 @@ export function useNotesDnd(memos: Memo[], setMemos: (memos: Memo[]) => void) {
     ];
 
     const newMemos = memos.map((cat, idx) => {
-      if (idx === fromCategoryIndex) {
-        return { ...cat, tasks: newFromTasks };
-      }
-      if (idx === toCategoryIndex) {
-        return { ...cat, tasks: newToTasks };
-      }
+      if (idx === fromCategoryIndex) return { ...cat, tasks: newFromTasks };
+      if (idx === toCategoryIndex) return { ...cat, tasks: newToTasks };
       return cat;
     });
 
     setMemos(newMemos);
-    saveNotesToServer(newMemos);
+
+    const toCategoryId = memos[toCategoryIndex].id;
+    updateTask(task.id as string, { categoryId: toCategoryId }).then(result => {
+      if (!result.ok) {
+        setMemos(prevMemos);
+      } else {
+        // 移動先カテゴリーの並び順も更新
+        reorderTasks(toCategoryId, newToTasks.map(t => t.id));
+      }
+    });
+
     setActiveTask(null);
     setTimeout(() => setActiveCategory(null), 0);
   };

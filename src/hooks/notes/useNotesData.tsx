@@ -4,9 +4,17 @@ import type { Memo, Task } from '@/types/notes';
 
 /**
  * データ管理とCRUD操作を担当するカスタムフック
+ * 全操作は「API → DBレスポンス → state更新」の順で行う
  */
 export function useNotesData() {
-  const { saveNotesToServer } = useNotesApi();
+  const {
+    createCategory,
+    updateCategory,
+    deleteCategory: apiDeleteCategory,
+    createTask,
+    updateTask,
+    deleteTask: apiDeleteTask,
+  } = useNotesApi();
 
   const [text, setText] = useState<string>("");
   const [taskInputs, setTaskInputs] = useState<string[]>([]);
@@ -23,11 +31,15 @@ export function useNotesData() {
    * カテゴリーの折り畳み/展開切り替え
    */
   const toggleCategoryCollapse = async (categoryId: string): Promise<void> => {
-    const newMemos = memos.map(cat =>
-      cat.id === categoryId ? { ...cat, collapsed: !cat.collapsed } : cat
-    );
-    setMemos(newMemos);
-    await saveNotesToServer(newMemos);
+    const target = memos.find(cat => cat.id === categoryId);
+    if (!target) return;
+
+    const result = await updateCategory(categoryId, { collapsed: !target.collapsed });
+    if (result.ok && result.data) {
+      setMemos(prev => prev.map(cat =>
+        cat.id === categoryId ? { ...result.data!, tasks: cat.tasks } : cat
+      ));
+    }
   };
 
   /**
@@ -43,11 +55,12 @@ export function useNotesData() {
       return;
     }
 
-    const newMemos: Memo[] = [...memos, { id: crypto.randomUUID(), category: trimmedText, tasks: [], collapsed: false }];
     setText("");
-    setTaskInputs([...taskInputs, ""]);
-    setMemos(newMemos);
-    await saveNotesToServer(newMemos);
+    const result = await createCategory(trimmedText);
+    if (result.ok && result.data) {
+      setMemos(prev => [...prev, result.data!]);
+      setTaskInputs(prev => [...prev, ""]);
+    }
   };
 
   /**
@@ -70,28 +83,19 @@ export function useNotesData() {
 
     const currentTasks = category.tasks || [];
     const isDuplicate = currentTasks.some(existingTask => existingTask.text === trimmed);
-    if (isDuplicate) {
-      return;
-    }
-
-    const newTask: Task = {
-      id: crypto.randomUUID(),
-      text: trimmed,
-      done: false,
-    };
-
-    const newMemos = [...memos];
-    const tasks = [...currentTasks, newTask];
-    newMemos[catIdx] = {
-      ...category,
-      tasks: sortTasks(tasks),
-    };
+    if (isDuplicate) return;
 
     const newInputs = [...taskInputs];
     newInputs[catIdx] = "";
     setTaskInputs(newInputs);
-    setMemos(newMemos);
-    await saveNotesToServer(newMemos);
+
+    const result = await createTask(category.id, trimmed);
+    if (result.ok && result.data) {
+      setMemos(prev => prev.map((cat, idx) => {
+        if (idx !== catIdx) return cat;
+        return { ...cat, tasks: sortTasks([...cat.tasks, result.data!]) };
+      }));
+    }
   };
 
   /**
@@ -109,57 +113,44 @@ export function useNotesData() {
       return;
     }
 
-    const tasks = category.tasks.map(task =>
-      task.id === taskId ? { ...task, done: !task.done } : task
-    );
+    const task = category.tasks.find(t => t.id === taskId);
+    if (!task) return;
 
-    const newMemos = [...memos];
-    newMemos[catIdx] = { ...category, tasks: sortTasks(tasks) };
-
-    setMemos(newMemos);
-    await saveNotesToServer(newMemos);
+    const result = await updateTask(taskId, { done: !task.done });
+    if (result.ok && result.data) {
+      setMemos(prev => prev.map((cat, idx) => {
+        if (idx !== catIdx) return cat;
+        const updatedTasks = cat.tasks.map(t => t.id === taskId ? result.data! : t);
+        return { ...cat, tasks: sortTasks(updatedTasks) };
+      }));
+    }
   };
 
   /**
    * タスク削除（ID指定）
    */
   const deleteTaskById = async (categoryId: string, taskId: string): Promise<void> => {
-    const idx = memos.findIndex((cat) => cat.id === categoryId);
-    if (idx === -1) {
-      console.error(`Category not found for deleteTaskById: ${categoryId}`);
-      return;
+    const result = await apiDeleteTask(taskId);
+    if (result.ok) {
+      setMemos(prev => prev.map(cat => {
+        if (cat.id !== categoryId) return cat;
+        return { ...cat, tasks: cat.tasks.filter(t => t.id !== taskId) };
+      }));
     }
-
-    const cat = memos[idx];
-    if (!cat || !Array.isArray(cat.tasks)) {
-      console.error(`Invalid category/tasks for deleteTaskById at index ${idx}`);
-      return;
-    }
-
-    const newTasks = cat.tasks.filter((t) => t.id !== taskId);
-    if (newTasks.length === cat.tasks.length) {
-      console.warn(`Task not found for deleteTaskById: ${taskId}`);
-      return;
-    }
-
-    const newMemos = [...memos];
-    newMemos[idx] = { ...cat, tasks: newTasks };
-
-    setMemos(newMemos);
-    await saveNotesToServer(newMemos);
   };
 
   /**
    * カテゴリー削除
    */
   const deleteCategory = async (catIdx: number): Promise<void> => {
-    const removedCategory = memos[catIdx];
-    if (!removedCategory) return;
+    const target = memos[catIdx];
+    if (!target) return;
 
-    const newMemos = memos.filter((_, i) => i !== catIdx);
-    setMemos(newMemos);
-    setTaskInputs((inputs) => inputs.filter((_, i) => i !== catIdx));
-    await saveNotesToServer(newMemos);
+    const result = await apiDeleteCategory(target.id);
+    if (result.ok) {
+      setMemos(prev => prev.filter((_, i) => i !== catIdx));
+      setTaskInputs(prev => prev.filter((_, i) => i !== catIdx));
+    }
   };
 
   return {

@@ -52,20 +52,12 @@ export interface NotesState {
   setMobileCategoryIndex: React.Dispatch<React.SetStateAction<number>>;
   handlePrevCategory: () => void;
   handleNextCategory: () => void;
-  saveNotesToServer: (dataToSave: Memo[]) => Promise<SaveResult>;
-  loadNotesFromServer: () => Promise<LoadResult>;
 }
 
 export interface ActiveCategory {
   id: string;
   label: string;
   tasks?: Task[];
-}
-
-export interface SaveResult {
-  ok: boolean;
-  memos?: Memo[];
-  error?: string;
 }
 
 export interface LoadResult {

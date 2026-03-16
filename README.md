@@ -32,9 +32,16 @@ src/
 ├── app/                    # Next.js App Router
 │   ├── api/               # API Routes
 │   │   ├── auth/         # NextAuth エンドポイント
-│   │   └── data/         # データ同期 API
-│   │       ├── route.ts  # GET / POST ハンドラー
-│   │       └── helpers.ts # DB同期ヘルパー関数
+│   │   ├── categories/   # カテゴリー CRUD API
+│   │   │   ├── route.ts          # POST（作成）
+│   │   │   ├── [id]/route.ts     # PATCH（更新）/ DELETE（削除）
+│   │   │   └── reorder/route.ts  # PATCH（並び順更新）
+│   │   ├── tasks/        # タスク CRUD API
+│   │   │   ├── route.ts          # POST（作成）
+│   │   │   ├── [id]/route.ts     # PATCH（更新）/ DELETE（削除）
+│   │   │   └── reorder/route.ts  # PATCH（並び順更新）
+│   │   └── notes/        # 初回ロード API
+│   │       └── route.ts  # GET（全データ一括取得）
 │   ├── login/            # ログインページ
 │   └── page.tsx          # メインページ
 ├── components/            # React コンポーネント
@@ -57,7 +64,9 @@ src/
 │   ├── useNotes.tsx       # 統合フック
 │   └── useNotesSync.tsx   # データ同期
 ├── lib/                   # ユーティリティ
-│   └── supabase-server.ts
+│   ├── supabase-server.ts
+│   ├── api-helpers.ts     # requireAuth（認証ヘルパー）
+│   └── db-helpers.ts      # composeMemos（DB→フロント変換）
 ├── types/                 # 型定義
 │   ├── notes.ts           # フロント共通の型
 │   ├── api.ts             # APIペイロードの型
@@ -72,7 +81,9 @@ src/
 - **コンポーネント分離**: 再利用可能な小さなコンポーネントに分割
 - **型安全性**: TypeScript による厳格な型チェック
 - **レスポンシブ対応**: モバイルとデスクトップで最適化された UI
-- **データ同期**: 全データを送信し、DB 側で差分を調整（upsert + 不要レコード削除）
+- **DB を Source of Truth**: IDはDBが発行（`gen_random_uuid()`）。全操作はAPIレスポンスでstateを更新し、失敗時はstateを変更しない
+- **操作単位のAPI**: 全量置換ではなく、カテゴリー・タスクごとに粒度別エンドポイントを使用
+- **DnD楽観的更新**: 並び替えのみ先にUI更新し、失敗時はpre-drag stateへロールバック
 
 ## データベース設計
 
@@ -100,7 +111,7 @@ erDiagram
 
 ### 認証・データ管理
 - **Google ログイン認証** - NextAuth.js による安全な認証
-- **自動データ同期** - Supabase によるリアルタイム保存とロード
+- **DB中心の状態管理** - IDはDBが発行。書き込み成功後にDBレスポンスでstateを更新
 - **初回ロード制御** - データロード完了まで入力を禁止し、データ消失を防止
 
 ### タスク管理
@@ -141,7 +152,7 @@ bun dev
 - タスクの完了・未完了切り替え
 - モバイル対応レスポンシブデザイン
 - テーマカラー切り替え
-- Supabase による自動データ同期（サインイン時の自動ロード、編集時の自動保存）
+- Supabase による自動データ同期（サインイン時の自動ロード、操作単位の自動保存）
 
 ## Supabase セットアップ（開発環境）
 
